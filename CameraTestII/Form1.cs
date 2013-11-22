@@ -26,14 +26,19 @@ namespace CameraTestII
     {
         private VideoCaptureDevice _camera;
         private delegate void SetTextCallback(string text, ref TextBox box);
-        private readonly HSLFiltering _filterHsl = new HSLFiltering(new IntRange(170, 230), new Range(0.8f, 1), new Range(0, 0.9f));
+        private HSLFiltering _filterHsl = new HSLFiltering();
         private readonly Grayscale _filterGrayscale = Grayscale.CommonAlgorithms.BT709;
         private readonly Erosion3x3 _filterErosion = new Erosion3x3();
+        private bool _keypressed = false;
+        private int frameCount = 0;
         private SineProvider sine;
         private WaveOut wout;
         private BlobCounter _blob = new BlobCounter();
-        private int frequency = 0;
-        private int volume = 0;
+        public static float frequency = 0;
+        public static float volume = 0;
+        private int[] filterH = new int[90];
+        private float[] filterS = new float[90];
+        private float[] filterL = new float[90];
         private void setText(string text, ref TextBox box)
         {
             if (box.InvokeRequired)
@@ -61,7 +66,7 @@ namespace CameraTestII
         {
             var videoDevices = new FilterInfoCollection(FilterCategory.VideoInputDevice);
             _camera = new VideoCaptureDevice(videoDevices[0].MonikerString);
-            _camera.NewFrame += new NewFrameEventHandler(NewFrameHandler);
+            _camera.NewFrame += CalibrationHandler;
             _camera.Start();
             textBox1.Text = trackBar1.Value.ToString();
             sine = new SineProvider();
@@ -71,6 +76,66 @@ namespace CameraTestII
             wout.Play();
         }
 
+        private void CalibrationHandler(object sender, NewFrameEventArgs e)
+        {
+            Bitmap frame = new Bitmap(e.Frame);
+            Color c = Color.FromArgb(255, 0, 0);
+            if (!_keypressed)
+            {
+                for (int i = -2; i <= 2; i++)
+                {
+                    for (int j = -2; j <= 2; j++)
+                    {
+                        frame.SetPixel(100 + i, 100 + j, c);
+                    }
+                }
+                setText("Please hold the pointer in marked area and press any key", ref textBox2);
+                pictureBox1.Image = frame;
+            }
+            else if (frameCount < 90)
+            {
+                int h = 0;
+                float s = 0, l = 0;
+                for (int i = -2; i <= 2; i++)
+                {
+                    for (int j = -2; j <= 2; j++)
+                    {
+                        RGB col = new RGB(frame.GetPixel(100 + i, 100 + j));
+                        HSL hsl = HSL.FromRGB(col);
+                        h += hsl.Hue;
+                        s += hsl.Saturation;
+                        l += hsl.Luminance;
+                    }
+                }
+                filterH[frameCount] = h/25;
+                filterL[frameCount] = l/25;
+                filterS[frameCount] = s/25;
+                for (int i = -2; i <= 2; i++)
+                {
+                    for (int j = -2; j <= 2; j++)
+                    {
+                        frame.SetPixel(100 + i, 100 + j, c);
+                    }
+                }
+                setText("Calibrating, frame: " + frameCount.ToString() + "/90", ref textBox2);
+                frameCount++;
+                pictureBox1.Image = frame;
+            }
+            else
+            {
+                int h = (int)filterH.Average();
+                float s = filterS.Average();
+                float l = filterL.Average();
+                IntRange hRange = new IntRange(h - 36, h + 36);
+                Range sRange = new Range(s - 0.1f, s + 0.1f);
+                Range lRange = new Range(l - 0.1f, l + 0.1f);
+                _filterHsl = new HSLFiltering(hRange, sRange, lRange);
+                setText("", ref textBox2);
+                _camera.NewFrame -= CalibrationHandler;
+                _camera.NewFrame += NewFrameHandler;
+            }
+            
+        }
         private void NewFrameHandler(object sender, NewFrameEventArgs e)
         {
             Bitmap frame = new Bitmap(e.Frame);
@@ -116,21 +181,33 @@ namespace CameraTestII
             }
             pictureBox2.Image = unmanaged2.ToManagedImage();
             pictureBox1.Image = frame;
-            sine.Amplitude = 1 - yCent/960.0f;
-            sine.Frequency = 440 + xCent;
+            volume = 1 - yCent/960.0f;
+            frequency = 440 + xCent;
+        }
+
+        private void Form1_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            _camera = null;
+            wout.Stop();
+            Application.Exit();
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            _keypressed = true;
         }
     }
     public class SineProvider : WaveProvider32
     {
         private int sample;
-        public float Frequency { get; set; }
-        public float Amplitude { get; set; }
         public override int Read(float[] buffer, int offset, int sampleCount)
         {
+            float _amplitude = Form1.volume;
+            float _frequency = Form1.frequency;
             int sampleRate = WaveFormat.SampleRate;
             for (int n = 0; n < sampleCount; n++)
             {
-                buffer[n + offset] = (float)(Amplitude * Math.Sin((2 * Math.PI * sample * Frequency) / sampleRate));
+                buffer[n + offset] = (float)(_amplitude * Math.Sin((2 * Math.PI * sample * _frequency) / sampleRate));
                 sample++;
                 if (sample >= sampleRate) sample = 0;
             }
