@@ -30,8 +30,8 @@
         {
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.pictureBox2 = new System.Windows.Forms.PictureBox();
-            this.trackBar1 = new System.Windows.Forms.TrackBar();
-            this.textBox1 = new System.Windows.Forms.TextBox();
+            this.trackBarH = new System.Windows.Forms.TrackBar();
+            this.textBoxHF = new System.Windows.Forms.TextBox();
             this.textBoxR = new System.Windows.Forms.TextBox();
             this.textBoxG = new System.Windows.Forms.TextBox();
             this.textBoxB = new System.Windows.Forms.TextBox();
@@ -40,9 +40,15 @@
             this.textBoxL = new System.Windows.Forms.TextBox();
             this.textBox2 = new System.Windows.Forms.TextBox();
             this.button1 = new System.Windows.Forms.Button();
+            this.trackBarS = new System.Windows.Forms.TrackBar();
+            this.trackBarL = new System.Windows.Forms.TrackBar();
+            this.textBoxSF = new System.Windows.Forms.TextBox();
+            this.textBoxLF = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.trackBar1)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.trackBarH)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.trackBarS)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.trackBarL)).BeginInit();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -61,20 +67,21 @@
             this.pictureBox2.TabIndex = 0;
             this.pictureBox2.TabStop = false;
             // 
-            // trackBar1
+            // trackBarH
             // 
-            this.trackBar1.Location = new System.Drawing.Point(737, 627);
-            this.trackBar1.Maximum = 255;
-            this.trackBar1.Name = "trackBar1";
-            this.trackBar1.Size = new System.Drawing.Size(633, 45);
-            this.trackBar1.TabIndex = 1;
+            this.trackBarH.Location = new System.Drawing.Point(737, 627);
+            this.trackBarH.Maximum = 300;
+            this.trackBarH.Name = "trackBarH";
+            this.trackBarH.Size = new System.Drawing.Size(633, 45);
+            this.trackBarH.TabIndex = 1;
+            this.trackBarH.Scroll += new System.EventHandler(this.trackBarH_Scroll);
             // 
-            // textBox1
+            // textBoxHF
             // 
-            this.textBox1.Location = new System.Drawing.Point(1376, 627);
-            this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(80, 20);
-            this.textBox1.TabIndex = 2;
+            this.textBoxHF.Location = new System.Drawing.Point(1376, 627);
+            this.textBoxHF.Name = "textBoxHF";
+            this.textBoxHF.Size = new System.Drawing.Size(80, 20);
+            this.textBoxHF.TabIndex = 2;
             // 
             // textBoxR
             // 
@@ -135,11 +142,45 @@
             this.button1.UseVisualStyleBackColor = true;
             this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
+            // trackBarS
+            // 
+            this.trackBarS.Location = new System.Drawing.Point(737, 662);
+            this.trackBarS.Maximum = 300;
+            this.trackBarS.Name = "trackBarS";
+            this.trackBarS.Size = new System.Drawing.Size(633, 45);
+            this.trackBarS.TabIndex = 6;
+            this.trackBarS.Scroll += new System.EventHandler(this.trackBarS_Scroll);
+            // 
+            // trackBarL
+            // 
+            this.trackBarL.Location = new System.Drawing.Point(737, 701);
+            this.trackBarL.Maximum = 300;
+            this.trackBarL.Name = "trackBarL";
+            this.trackBarL.Size = new System.Drawing.Size(633, 45);
+            this.trackBarL.TabIndex = 6;
+            this.trackBarL.Scroll += new System.EventHandler(this.trackBarL_Scroll);
+            // 
+            // textBoxSF
+            // 
+            this.textBoxSF.Location = new System.Drawing.Point(1376, 662);
+            this.textBoxSF.Name = "textBoxSF";
+            this.textBoxSF.Size = new System.Drawing.Size(80, 20);
+            this.textBoxSF.TabIndex = 2;
+            // 
+            // textBoxLF
+            // 
+            this.textBoxLF.Location = new System.Drawing.Point(1376, 701);
+            this.textBoxLF.Name = "textBoxLF";
+            this.textBoxLF.Size = new System.Drawing.Size(80, 20);
+            this.textBoxLF.TabIndex = 2;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1473, 684);
+            this.ClientSize = new System.Drawing.Size(1473, 758);
+            this.Controls.Add(this.trackBarL);
+            this.Controls.Add(this.trackBarS);
             this.Controls.Add(this.button1);
             this.Controls.Add(this.textBox2);
             this.Controls.Add(this.textBoxL);
@@ -148,8 +189,10 @@
             this.Controls.Add(this.textBoxG);
             this.Controls.Add(this.textBoxH);
             this.Controls.Add(this.textBoxR);
-            this.Controls.Add(this.textBox1);
-            this.Controls.Add(this.trackBar1);
+            this.Controls.Add(this.textBoxLF);
+            this.Controls.Add(this.textBoxSF);
+            this.Controls.Add(this.textBoxHF);
+            this.Controls.Add(this.trackBarH);
             this.Controls.Add(this.pictureBox2);
             this.Controls.Add(this.pictureBox1);
             this.Name = "Form1";
@@ -158,7 +201,9 @@
             this.Shown += new System.EventHandler(this.Form1_Load);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.trackBar1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.trackBarH)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.trackBarS)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.trackBarL)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -168,8 +213,8 @@
 
         private System.Windows.Forms.PictureBox pictureBox1;
         private System.Windows.Forms.PictureBox pictureBox2;
-        private System.Windows.Forms.TrackBar trackBar1;
-        private System.Windows.Forms.TextBox textBox1;
+        private System.Windows.Forms.TrackBar trackBarH;
+        private System.Windows.Forms.TextBox textBoxHF;
         private System.Windows.Forms.TextBox textBoxR;
         private System.Windows.Forms.TextBox textBoxG;
         private System.Windows.Forms.TextBox textBoxB;
@@ -178,6 +223,10 @@
         private System.Windows.Forms.TextBox textBoxL;
         private System.Windows.Forms.TextBox textBox2;
         private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.TrackBar trackBarS;
+        private System.Windows.Forms.TrackBar trackBarL;
+        private System.Windows.Forms.TextBox textBoxSF;
+        private System.Windows.Forms.TextBox textBoxLF;
     }
 }
 
