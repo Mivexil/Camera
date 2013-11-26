@@ -11,9 +11,10 @@ using AForge.Video.DirectShow;
 using AForge.Math.Geometry;
 using Point = System.Drawing.Point; //instead of AForge.Point
 
+
 namespace CameraTestII
 {
-    
+
     public partial class Form1 : Form
     {
         private VideoCaptureDevice _camera;
@@ -33,15 +34,16 @@ namespace CameraTestII
         private Queue<Point> _lastPoints = new Queue<Point>();
         private Bitmap _lastFrame;
         private List<List<IntPoint>> blocks = new List<List<IntPoint>>();
-        /*Because we can't access controls from outside the UI thread normally*/
         private UnmanagedImage _blockMap;
+
+        /*Because we can't access controls from outside the UI thread normally*/
         public void SetText(string text, TextBox box)
         {
             if (box.InvokeRequired)
             {
                 try
                 {
-                    Invoke(new Action<string, TextBox>(SetText), new object[] {text, box});
+                    Invoke(new Action<string, TextBox>(SetText), new object[] { text, box });
                 }
                 catch (ObjectDisposedException)
                 {
@@ -107,18 +109,57 @@ namespace CameraTestII
             HSLChanged();
 
         }
-        private void setSound(int sound)
+
+        private int checkPosition(int X, int Y)
         {
-            //frequency 
+            int position = -1;
+
+            Color pixel = _blockMap.GetPixel(X, Y);
+            position = pixel.R;
+
+            Console.WriteLine(position);
+            return position;
         }
 
-        private void checkPosition(int X, int Y, UnmanagedImage im)
+        private void InstrumentMap()
         {
-            int sound = 0;
             int minX = 0, minY = 0, maxX = 0, maxY = 0;
             foreach (List<IntPoint> block in blocks)
             {
+                minX = block[0].X;
+                maxX = block[0].X;
+                minY = block[0].Y;
+                maxY = block[0].Y;
 
+                foreach (IntPoint corner in block)
+                {
+                    if (corner.X < minX)
+                    {
+                        minX = corner.X;
+                    }
+                    if (corner.X > maxX)
+                    {
+                        maxX = corner.X;
+                    }
+                    if (corner.Y < minY)
+                    {
+                        minY = corner.Y;
+                    }
+                    if (corner.Y > maxY)
+                    {
+                        maxY = corner.Y;
+                    }
+                }
+
+                IntPoint midPoint;
+                midPoint.X = (minX + maxX) / 2;
+                midPoint.Y = (minY + maxY) / 2;
+
+                PointedColorFloodFill filter = new PointedColorFloodFill();
+                filter.Tolerance = Color.FromArgb(150, 92, 92);
+                filter.FillColor = Color.FromArgb(blocks.IndexOf(block), blocks.IndexOf(block), blocks.IndexOf(block));
+                filter.StartingPoint = midPoint;
+                filter.ApplyInPlace(_blockMap);
             }
         }
 
@@ -131,7 +172,7 @@ namespace CameraTestII
             _filterErosion.ApplyInPlace(unmanaged2);
             _filterErosion.ApplyInPlace(unmanaged2);
 
-            Threshold filter = new Threshold(210);
+            Threshold filter = new Threshold(20);
             filter.ApplyInPlace(unmanaged2);
 
             BlobCounter extractor = new BlobCounter();
@@ -139,6 +180,7 @@ namespace CameraTestII
             extractor.MaxWidth = extractor.MaxHeight = unmanaged2.Height / 2;
             extractor.FilterBlobs = true;
             extractor.ProcessImage(unmanaged2);
+            _blockMap = unmanaged2;
 
             foreach (Blob blob in extractor.GetObjectsInformation())
             {
@@ -148,25 +190,28 @@ namespace CameraTestII
                     List<IntPoint> corners = PointsCloud.FindQuadrilateralCorners(edgePoints);
                     /*foreach (IntPoint corner in corners)
                     {
-                        Drawing.Polygon(unmanaged2, corners, Color.Red);
+                        Drawing.Polygon(_blockMap, corners, Color.Red);
                         for (int i = 0; i < corners.Count; i++)
                         {
-                            Drawing.FillRectangle(unmanaged2,
+                            Drawing.FillRectangle(_blockMap,
                                 new Rectangle(corner.X - 2, corner.Y - 2, 5, 5),
                                 Color.FromArgb(i * 32 + 127 + 32, i * 64, i * 64));
                         }
                     }*/
                     blocks.Add(corners);
                 }
-                
-            }
-            UnmanagedImage ui = unmanaged2.Clone();
 
-            pictureBox2.Image = unmanaged2.ToManagedImage();
+            }
+            blocks.Sort((a, b) => (a[0].X.CompareTo(b[0].X)));
+
+            InstrumentMap();
+
+            pictureBox2.Image = _blockMap.ToManagedImage();
             _camera.NewFrame -= InstrumentHandler;
             _camera.NewFrame += CalibrationHandler;
 
         }
+
         private void CalibrationHandler(object sender, NewFrameEventArgs e)
         {
             _lastFrame = e.Frame;
@@ -187,7 +232,7 @@ namespace CameraTestII
                 _camera.NewFrame -= CalibrationHandler;
                 _camera.NewFrame += NewFrameHandler;
             }
-            
+
         }
         private void NewFrameHandler(object sender, NewFrameEventArgs e)
         {
@@ -198,7 +243,7 @@ namespace CameraTestII
             {
                 for (int j = -2; j <= 2; j++)
                 {
-                    unmanaged.SetPixel(100+i, 100+j, c);
+                    unmanaged.SetPixel(100 + i, 100 + j, c);
                 }
             }
             _filterHSL.ApplyInPlace(unmanaged);
@@ -210,11 +255,11 @@ namespace CameraTestII
             int xCent = -1, yCent = -1;
             if (rects.Length != 0)
             {
-                Rectangle r = rects.Aggregate((r1, r2) => (r1.Height*r1.Width) > (r2.Height*r2.Width) ? r1 : r2);
-                xCent = r.Left + r.Width/2;
-                yCent = r.Top + r.Height/2;
+                Rectangle r = rects.Aggregate((r1, r2) => (r1.Height * r1.Width) > (r2.Height * r2.Width) ? r1 : r2);
+                xCent = r.Left + r.Width / 2;
+                yCent = r.Top + r.Height / 2;
             }
-            if (xCent >= 2 && yCent >= 2 && xCent <= unmanaged.Width-2 && yCent <= unmanaged.Height-2)
+            if (xCent >= 2 && yCent >= 2 && xCent <= unmanaged.Width - 2 && yCent <= unmanaged.Height - 2)
             {
                 for (int i = -2; i <= 2; i++)
                 {
@@ -258,6 +303,7 @@ namespace CameraTestII
                         if (p.X + i >= 0 && p.X + i <= unmanaged2.Width && p.Y + i >= 0 && p.Y + i <= unmanaged2.Height)
                         {
                             unmanaged2.SetPixel(p.X + i, p.Y + j, 255);
+                            checkPosition(p.X, p.Y);
                         }
                     }
                 }
@@ -290,22 +336,22 @@ namespace CameraTestII
         }
         private void trackBarH_Scroll(object sender, EventArgs e)
         {
-            _filterHPerc = trackBarH.Value/ 200.0f;
-            SetText((_filterHPerc*100) + "%", textBoxHF);
+            _filterHPerc = trackBarH.Value / 200.0f;
+            SetText((_filterHPerc * 100) + "%", textBoxHF);
             HSLChanged();
         }
 
         private void trackBarS_Scroll(object sender, EventArgs e)
         {
             _filterSPerc = trackBarS.Value / 200.0f;
-            SetText((_filterSPerc*100) + "%", textBoxSF);
+            SetText((_filterSPerc * 100) + "%", textBoxSF);
             HSLChanged();
         }
 
         private void trackBarL_Scroll(object sender, EventArgs e)
         {
             _filterLPerc = trackBarL.Value / 200.0f;
-            SetText((_filterLPerc*100) + "%", textBoxLF);
+            SetText((_filterLPerc * 100) + "%", textBoxLF);
             HSLChanged();
         }
 
