@@ -44,6 +44,9 @@
             this.trackBarL = new System.Windows.Forms.TrackBar();
             this.textBoxSF = new System.Windows.Forms.TextBox();
             this.textBoxLF = new System.Windows.Forms.TextBox();
+            this.textBoxV = new System.Windows.Forms.TextBox();
+            this.progressBarX = new System.Windows.Forms.ProgressBar();
+            this.progressBarY = new System.Windows.Forms.ProgressBar();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.trackBarH)).BeginInit();
@@ -174,11 +177,35 @@
             this.textBoxLF.Size = new System.Drawing.Size(80, 20);
             this.textBoxLF.TabIndex = 2;
             // 
+            // textBoxV
+            // 
+            this.textBoxV.Location = new System.Drawing.Point(12, 687);
+            this.textBoxV.Name = "textBoxV";
+            this.textBoxV.Size = new System.Drawing.Size(100, 20);
+            this.textBoxV.TabIndex = 7;
+            // 
+            // progressBarX
+            // 
+            this.progressBarX.Location = new System.Drawing.Point(225, 662);
+            this.progressBarX.Name = "progressBarX";
+            this.progressBarX.Size = new System.Drawing.Size(504, 23);
+            this.progressBarX.TabIndex = 8;
+            // 
+            // progressBarY
+            // 
+            this.progressBarY.Location = new System.Drawing.Point(225, 701);
+            this.progressBarY.Name = "progressBarY";
+            this.progressBarY.Size = new System.Drawing.Size(504, 23);
+            this.progressBarY.TabIndex = 8;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1473, 758);
+            this.Controls.Add(this.progressBarY);
+            this.Controls.Add(this.progressBarX);
+            this.Controls.Add(this.textBoxV);
             this.Controls.Add(this.trackBarL);
             this.Controls.Add(this.trackBarS);
             this.Controls.Add(this.button1);
@@ -227,6 +254,9 @@
         private System.Windows.Forms.TrackBar trackBarL;
         private System.Windows.Forms.TextBox textBoxSF;
         private System.Windows.Forms.TextBox textBoxLF;
+        private System.Windows.Forms.TextBox textBoxV;
+        private System.Windows.Forms.ProgressBar progressBarX;
+        private System.Windows.Forms.ProgressBar progressBarY;
     }
 }
 

@@ -1,23 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Drawing.Imaging;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.IO;
-using System.Windows.Forms.VisualStyles;
 using AForge;
 using AForge.Imaging;
 using AForge.Imaging.Filters;
+using AForge.Math;
 using AForge.Video;
 using AForge.Video.DirectShow;
-using AForge.Vision;
-using AForge.Vision.Motion;
 using NAudio.Wave;
+using Point = System.Drawing.Point;
 
 namespace CameraTestII
 {
@@ -26,27 +19,40 @@ namespace CameraTestII
     {
         private VideoCaptureDevice _camera;
         private delegate void SetTextCallback(string text, ref TextBox box);
+        private delegate void SetValCallback(int val, ref ProgressBar bar);
         private HSLFiltering _filterHsl = new HSLFiltering();
         private readonly Grayscale _filterGrayscale = Grayscale.CommonAlgorithms.BT709;
         private readonly Erosion3x3 _filterErosion = new Erosion3x3();
-        private bool _keypressed = false;
-        private int frameCount = 0;
-        private SineProvider sine;
-        private WaveOut wout;
-        private BlobCounter _blob = new BlobCounter();
-        public static float frequency = 0;
-        public static float volume = 0;
-        private int[] filterH = new int[30];
-        private float[] filterS = new float[30];
-        private float[] filterL = new float[30];
-        private int filterHValue;
-        private float filterSValue, filterLValue;
-        private float filterHPerc = 0, filterLPerc = 0, filterSPerc = 0;
-        private void setText(string text, ref TextBox box)
+        private bool _keypressed;
+        private int _frameCount;
+        private SineProvider _sine;
+        private WaveOut _wout;
+        private readonly BlobCounter _blob = new BlobCounter();
+        public static float Frequency = 0;
+        public static float Volume = 0;
+        private readonly int[] _filterH = new int[30];
+        private readonly float[] _filterS = new float[30];
+        private readonly float[] _filterL = new float[30];
+        private int _filterHValue;
+        private float _filterSValue, _filterLValue;
+        private float _filterHPerc, _filterLPerc, _filterSPerc;
+        private const double _epsilon = 20;
+        private List<Point> _hitPoints = new List<Point>();
+        private Queue<Point> _lastPoints = new Queue<Point>();
+
+        private double CalcLength(Point? p)
+        {
+            if (p != null)
+            {
+                return Math.Sqrt(p.Value.X*p.Value.X + p.Value.Y*p.Value.Y);
+            }
+            else return 0;
+        }
+        private void SetText(string text, ref TextBox box)
         {
             if (box.InvokeRequired)
             {
-                SetTextCallback d = new SetTextCallback(setText);
+                SetTextCallback d = SetText;
                 try
                 {
                     Invoke(d, new object[] {text, box});
@@ -58,6 +64,26 @@ namespace CameraTestII
             else
             {
                 box.Text = text;
+            }
+        }
+
+        private void SetVal(int value, ref ProgressBar bar)
+        {
+            if (bar.InvokeRequired)
+            {
+                SetValCallback d = SetVal;
+                try
+                {
+                    Invoke(d, new object[] {value, bar});
+                }
+                catch (ObjectDisposedException)
+                {
+                    
+                }
+            }
+            else
+            {
+                bar.Value = value;
             }
         }
         public Form1()
@@ -72,13 +98,29 @@ namespace CameraTestII
             _camera.NewFrame += CalibrationHandler;
             _camera.Start();
             textBoxHF.Text = trackBarH.Value.ToString();
-            sine = new SineProvider();
-            sine.SetWaveFormat(16000, 1);
-            wout = new WaveOut();
-            wout.Init(sine);
-            wout.Play();
+            //_sine = new SineProvider();
+            //_sine.SetWaveFormat(16000, 1);
+            //_wout = new WaveOut();
+            //_wout.Init(_sine);
+            //_wout.Play();
         }
 
+        private static bool[] Directions(Queue<Point> q)
+        {
+            bool[] ret = new bool[4];
+            for (int i = 1; i < 5; i++)
+            {
+                if (q.ToArray()[i].Y >= q.ToArray()[i - 1].Y)
+                {
+                    ret[i - 1] = true;
+                }
+                else
+                {
+                    ret[i - 1] = false;
+                }
+            }
+            return ret;
+        }
         private void CalibrationHandler(object sender, NewFrameEventArgs e)
         {
             Bitmap frame = new Bitmap(e.Frame);
@@ -92,10 +134,10 @@ namespace CameraTestII
                         frame.SetPixel(100 + i, 100 + j, c);
                     }
                 }
-                setText("Please hold the pointer in marked area and press any key", ref textBox2);
+                SetText("Please hold the pointer in marked area and press any key", ref textBox2);
                 pictureBox1.Image = frame;
             }
-            else if (frameCount < 30)
+            else if (_frameCount < 30)
             {
                 int h = 0;
                 float s = 0, l = 0;
@@ -110,9 +152,9 @@ namespace CameraTestII
                         l += hsl.Luminance;
                     }
                 }
-                filterH[frameCount] = h/25;
-                filterL[frameCount] = l/25;
-                filterS[frameCount] = s/25;
+                _filterH[_frameCount] = h/25;
+                _filterL[_frameCount] = l/25;
+                _filterS[_frameCount] = s/25;
                 for (int i = -2; i <= 2; i++)
                 {
                     for (int j = -2; j <= 2; j++)
@@ -120,20 +162,20 @@ namespace CameraTestII
                         frame.SetPixel(100 + i, 100 + j, c);
                     }
                 }
-                setText("Calibrating, frame: " + frameCount.ToString() + "/30", ref textBox2);
-                frameCount++;
+                SetText("Calibrating, frame: " + _frameCount.ToString() + "/30", ref textBox2);
+                _frameCount++;
                 pictureBox1.Image = frame;
             }
             else
             {
-                filterHValue = (int)filterH.Average();
-                filterSValue = filterS.Average();
-                filterLValue = filterL.Average();
-                IntRange hRange = new IntRange((int)(filterHValue - (filterHPerc/2)*filterHValue), (int)(filterHValue + (filterHPerc/2)*filterHValue));
-                Range sRange = new Range(filterSValue - (filterSPerc/2)*filterSValue, filterSValue + (filterSPerc/2)*filterSValue);
-                Range lRange = new Range(filterLValue - (filterLPerc / 2) * filterLValue, filterLValue + (filterLPerc / 2) * filterLValue);
+                _filterHValue = (int)_filterH.Average();
+                _filterSValue = _filterS.Average();
+                _filterLValue = _filterL.Average();
+                IntRange hRange = new IntRange((int)(_filterHValue - (_filterHPerc/2)*_filterHValue), (int)(_filterHValue + (_filterHPerc/2)*_filterHValue));
+                Range sRange = new Range(_filterSValue - (_filterSPerc/2)*_filterSValue, _filterSValue + (_filterSPerc/2)*_filterSValue);
+                Range lRange = new Range(_filterLValue - (_filterLPerc / 2) * _filterLValue, _filterLValue + (_filterLPerc / 2) * _filterLValue);
                 _filterHsl = new HSLFiltering(hRange, sRange, lRange);
-                setText("", ref textBox2);
+                SetText("", ref textBox2);
                 _camera.NewFrame -= CalibrationHandler;
                 _camera.NewFrame += NewFrameHandler;
             }
@@ -151,17 +193,15 @@ namespace CameraTestII
                     unmanaged.SetPixel(100+i, 100+j, c);
                 }
             }
-            Color c2 = frame.GetPixel(100, 100);
-            setText(((filterHValue - (filterHPerc / 2) * filterHValue).ToString()), ref textBoxR);
-            setText((filterSValue - (filterSPerc / 2) * filterSValue).ToString(), ref textBoxG);
-            setText((filterLValue - (filterLPerc / 2) * filterLValue).ToString(), ref textBoxB);
-            HSL hsl = HSL.FromRGB(new RGB(c2));
-            setText(((filterHValue + (filterHPerc / 2) * filterHValue).ToString()), ref textBoxH);
-            setText((filterSValue + (filterSPerc / 2) * filterSValue).ToString(), ref textBoxS);
-            setText((filterLValue + (filterLPerc / 2) * filterLValue).ToString().ToString(), ref textBoxL);
-            IntRange hRange = new IntRange((int)(filterHValue - (filterHPerc / 2) * filterHValue), (int)(filterHValue + (filterHPerc / 2) * filterHValue));
-            Range sRange = new Range(filterSValue - (filterSPerc / 2) * filterSValue, filterSValue + (filterSPerc / 2) * filterSValue);
-            Range lRange = new Range(filterLValue - (filterLPerc / 2) * filterLValue, filterLValue + (filterLPerc / 2) * filterLValue);
+            SetText(((_filterHValue - (_filterHPerc / 2) * _filterHValue).ToString()), ref textBoxR);
+            SetText((_filterSValue - (_filterSPerc / 2) * _filterSValue).ToString(), ref textBoxG);
+            SetText((_filterLValue - (_filterLPerc / 2) * _filterLValue).ToString(), ref textBoxB);
+            SetText(((_filterHValue + (_filterHPerc / 2) * _filterHValue).ToString()), ref textBoxH);
+            SetText((_filterSValue + (_filterSPerc / 2) * _filterSValue).ToString(), ref textBoxS);
+            SetText((_filterLValue + (_filterLPerc / 2) * _filterLValue).ToString(), ref textBoxL);
+            IntRange hRange = new IntRange((int)(_filterHValue - (_filterHPerc / 2) * _filterHValue), (int)(_filterHValue + (_filterHPerc / 2) * _filterHValue));
+            Range sRange = new Range(_filterSValue - (_filterSPerc / 2) * _filterSValue, _filterSValue + (_filterSPerc / 2) * _filterSValue);
+            Range lRange = new Range(_filterLValue - (_filterLPerc / 2) * _filterLValue, _filterLValue + (_filterLPerc / 2) * _filterLValue);
             _filterHsl = new HSLFiltering(hRange, sRange, lRange);
             _filterHsl.ApplyInPlace(unmanaged);
             UnmanagedImage unmanaged2 = _filterGrayscale.Apply(unmanaged);
@@ -186,16 +226,47 @@ namespace CameraTestII
                     }
                 }
             }
+            if (_lastPoints.Count >= 5)
+            {
+                _lastPoints.Dequeue();
+            }
+            _lastPoints.Enqueue(new Point(xCent, yCent));
+            if (_lastPoints.Count == 5)
+            {
+                bool[] upDownBools = Directions(_lastPoints);
+                if (upDownBools[0] && upDownBools[1] && !upDownBools[2] && !upDownBools[3])
+                {
+                    if (_lastPoints.ToArray()[2].Y - _lastPoints.ToArray()[0].Y > _epsilon &&
+                        _lastPoints.ToArray()[2].Y - _lastPoints.ToArray()[4].Y > _epsilon)
+                    {
+                        _hitPoints.Add(_lastPoints.ToArray()[2]);
+                        _lastPoints.Clear();
+                    }
+                }
+            }
+            foreach (Point p in _hitPoints)
+            {
+                for (int i = -2; i <= 2; i++)
+                {
+                    for (int j = -2; j <= 2; j++)
+                    {
+                        if (p.X + i >= 0 && p.X + i <= unmanaged2.Width && p.Y + i >= 0 && p.Y + i <= unmanaged2.Height)
+                        {
+                            unmanaged2.SetPixel(p.X + i, p.Y + j, 255);
+                        }
+                    }
+                }
+            }
             pictureBox2.Image = unmanaged2.ToManagedImage();
             pictureBox1.Image = frame;
-            volume = 1 - yCent/960.0f;
-            frequency = 440 + xCent;
+            Volume = 1 - yCent/960.0f;
+            Frequency = 440 + xCent;
         }
 
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
         {
             _camera = null;
-            wout.Stop();
+            //_wout.Stop();
             Environment.Exit(0);
         }
 
@@ -206,36 +277,36 @@ namespace CameraTestII
 
         private void trackBarH_Scroll(object sender, EventArgs e)
         {
-            filterHPerc = trackBarH.Value/ 200.0f;
-            setText(filterHPerc.ToString(), ref textBoxHF);
+            _filterHPerc = trackBarH.Value/ 200.0f;
+            SetText(_filterHPerc.ToString(), ref textBoxHF);
         }
 
         private void trackBarS_Scroll(object sender, EventArgs e)
         {
-            filterSPerc = trackBarS.Value / 200.0f;
-            setText(filterSPerc.ToString(), ref textBoxSF);
+            _filterSPerc = trackBarS.Value / 200.0f;
+            SetText(_filterSPerc.ToString(), ref textBoxSF);
         }
 
         private void trackBarL_Scroll(object sender, EventArgs e)
         {
-            filterLPerc = trackBarL.Value / 200.0f;
-            setText(filterLPerc.ToString(), ref textBoxLF);
+            _filterLPerc = trackBarL.Value / 200.0f;
+            SetText(_filterLPerc.ToString(), ref textBoxLF);
         }
 
     }
     public class SineProvider : WaveProvider32
     {
-        private int sample;
+        private int _sample;
         public override int Read(float[] buffer, int offset, int sampleCount)
         {
-            float _amplitude = Form1.volume;
-            float _frequency = Form1.frequency;
+            float amplitude = Form1.Volume;
+            float frequency = Form1.Frequency;
             int sampleRate = WaveFormat.SampleRate;
             for (int n = 0; n < sampleCount; n++)
             {
-                buffer[n + offset] = (float)(_amplitude * Math.Sin((2 * Math.PI * sample * _frequency) / sampleRate));
-                sample++;
-                if (sample >= sampleRate) sample = 0;
+                buffer[n + offset] = (float)(amplitude * Math.Sin((2 * Math.PI * _sample * frequency) / sampleRate));
+                _sample++;
+                if (_sample >= sampleRate) _sample = 0;
             }
             
    
