@@ -8,6 +8,7 @@ using AForge.Imaging;
 using AForge.Imaging.Filters;
 using AForge.Video;
 using AForge.Video.DirectShow;
+using AForge.Math.Geometry;
 using Point = System.Drawing.Point; //instead of AForge.Point
 
 namespace CameraTestII
@@ -31,7 +32,9 @@ namespace CameraTestII
         private List<Point> _hitPoints = new List<Point>();
         private Queue<Point> _lastPoints = new Queue<Point>();
         private Bitmap _lastFrame;
+        private List<List<IntPoint>> blocks = new List<List<IntPoint>>();
         /*Because we can't access controls from outside the UI thread normally*/
+        private UnmanagedImage _blockMap;
         public void SetText(string text, TextBox box)
         {
             if (box.InvokeRequired)
@@ -59,7 +62,8 @@ namespace CameraTestII
         {
             var videoDevices = new FilterInfoCollection(FilterCategory.VideoInputDevice);
             _camera = new VideoCaptureDevice(videoDevices[0].MonikerString);
-            _camera.NewFrame += CalibrationHandler;
+            //_camera.NewFrame += CalibrationHandler;
+            _camera.NewFrame += InstrumentHandler;
             _camera.Start();
             SetText("Please hold the pointer in marked area and press the button to the right", textBox2);
         }
@@ -101,6 +105,66 @@ namespace CameraTestII
             _filterSValue /= 25;
             _filterLValue /= 25;
             HSLChanged();
+
+        }
+        private void setSound(int sound)
+        {
+            //frequency 
+        }
+
+        private void checkPosition(int X, int Y, UnmanagedImage im)
+        {
+            int sound = 0;
+            int minX = 0, minY = 0, maxX = 0, maxY = 0;
+            foreach (List<IntPoint> block in blocks)
+            {
+
+            }
+        }
+
+        private void InstrumentHandler(object sender, NewFrameEventArgs e)
+        {
+            Bitmap frame = new Bitmap(e.Frame);
+            UnmanagedImage unmanaged = UnmanagedImage.FromManagedImage(frame);
+
+            UnmanagedImage unmanaged2 = _filterGrayscale.Apply(unmanaged);
+            _filterErosion.ApplyInPlace(unmanaged2);
+            _filterErosion.ApplyInPlace(unmanaged2);
+
+            Threshold filter = new Threshold(210);
+            filter.ApplyInPlace(unmanaged2);
+
+            BlobCounter extractor = new BlobCounter();
+            extractor.MinWidth = extractor.MinHeight = unmanaged2.Height / 15;
+            extractor.MaxWidth = extractor.MaxHeight = unmanaged2.Height / 2;
+            extractor.FilterBlobs = true;
+            extractor.ProcessImage(unmanaged2);
+
+            foreach (Blob blob in extractor.GetObjectsInformation())
+            {
+                List<IntPoint> edgePoints = extractor.GetBlobsEdgePoints(blob);
+                if (edgePoints.Count > 4)
+                {
+                    List<IntPoint> corners = PointsCloud.FindQuadrilateralCorners(edgePoints);
+                    /*foreach (IntPoint corner in corners)
+                    {
+                        Drawing.Polygon(unmanaged2, corners, Color.Red);
+                        for (int i = 0; i < corners.Count; i++)
+                        {
+                            Drawing.FillRectangle(unmanaged2,
+                                new Rectangle(corner.X - 2, corner.Y - 2, 5, 5),
+                                Color.FromArgb(i * 32 + 127 + 32, i * 64, i * 64));
+                        }
+                    }*/
+                    blocks.Add(corners);
+                }
+                
+            }
+            UnmanagedImage ui = unmanaged2.Clone();
+
+            pictureBox2.Image = unmanaged2.ToManagedImage();
+            _camera.NewFrame -= InstrumentHandler;
+            _camera.NewFrame += CalibrationHandler;
 
         }
         private void CalibrationHandler(object sender, NewFrameEventArgs e)
