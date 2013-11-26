@@ -82,6 +82,7 @@
             this.textBoxHF.Name = "textBoxHF";
             this.textBoxHF.Size = new System.Drawing.Size(80, 20);
             this.textBoxHF.TabIndex = 2;
+            this.textBoxHF.Text = "0%";
             // 
             // textBoxR
             // 
@@ -106,21 +107,21 @@
             // 
             // textBoxH
             // 
-            this.textBoxH.Location = new System.Drawing.Point(417, 627);
+            this.textBoxH.Location = new System.Drawing.Point(12, 652);
             this.textBoxH.Name = "textBoxH";
             this.textBoxH.Size = new System.Drawing.Size(100, 20);
             this.textBoxH.TabIndex = 3;
             // 
             // textBoxS
             // 
-            this.textBoxS.Location = new System.Drawing.Point(523, 628);
+            this.textBoxS.Location = new System.Drawing.Point(118, 653);
             this.textBoxS.Name = "textBoxS";
             this.textBoxS.Size = new System.Drawing.Size(100, 20);
             this.textBoxS.TabIndex = 3;
             // 
             // textBoxL
             // 
-            this.textBoxL.Location = new System.Drawing.Point(629, 628);
+            this.textBoxL.Location = new System.Drawing.Point(225, 652);
             this.textBoxL.Name = "textBoxL";
             this.textBoxL.Size = new System.Drawing.Size(100, 20);
             this.textBoxL.TabIndex = 3;
@@ -166,6 +167,7 @@
             this.textBoxSF.Name = "textBoxSF";
             this.textBoxSF.Size = new System.Drawing.Size(80, 20);
             this.textBoxSF.TabIndex = 2;
+            this.textBoxSF.Text = "0%";
             // 
             // textBoxLF
             // 
@@ -173,6 +175,7 @@
             this.textBoxLF.Name = "textBoxLF";
             this.textBoxLF.Size = new System.Drawing.Size(80, 20);
             this.textBoxLF.TabIndex = 2;
+            this.textBoxLF.Text = "0%";
             // 
             // Form1
             // 
