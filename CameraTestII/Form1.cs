@@ -9,14 +9,20 @@ using AForge.Imaging.Filters;
 using AForge.Video;
 using AForge.Video.DirectShow;
 using AForge.Math.Geometry;
+using NAudio.Mixer;
 using Point = System.Drawing.Point; //instead of AForge.Point
-
+using NAudio.Wave;
 
 namespace CameraTestII
 {
 
     public partial class Form1 : Form
     {
+        private IWavePlayer _waveOutDevice;
+        private WaveMixerStream32 _mixer;
+        private WaveFileReader[] readers = new WaveFileReader[8];
+        //private WaveOffsetStream[] offsetStreams = new WaveOffsetStream[8];
+        private WaveChannel32[] channel32s = new WaveChannel32[8];
         private VideoCaptureDevice _camera;
         private HSLFiltering _filterHSL = new HSLFiltering();
         private readonly Grayscale _filterGrayscale = Grayscale.CommonAlgorithms.BT709;
@@ -33,6 +39,7 @@ namespace CameraTestII
         private List<Point> _hitPoints = new List<Point>();
         private Queue<Point> _lastPoints = new Queue<Point>();
         private Bitmap _lastFrame;
+        private Random randGen = new Random();
         private List<List<IntPoint>> blocks = new List<List<IntPoint>>();
         private UnmanagedImage _blockMap;
 
@@ -65,6 +72,24 @@ namespace CameraTestII
             var videoDevices = new FilterInfoCollection(FilterCategory.VideoInputDevice);
             _camera = new VideoCaptureDevice(videoDevices[0].MonikerString);
             //_camera.NewFrame += CalibrationHandler;
+            _mixer = new WaveMixerStream32();
+            _mixer.AutoStop = false;
+            _waveOutDevice = new DirectSoundOut();
+            _waveOutDevice.Init(_mixer);
+            _waveOutDevice.Play();
+            readers[0] = new WaveFileReader(Resource1.C);
+            readers[1] = new WaveFileReader(Resource1.D);
+            readers[2] = new WaveFileReader(Resource1.E);
+            readers[3] = new WaveFileReader(Resource1.F);
+            readers[4] = new WaveFileReader(Resource1.G); 
+            readers[5] = new WaveFileReader(Resource1.A);
+            readers[6] = new WaveFileReader(Resource1.B);
+            readers[7] = new WaveFileReader(Resource1.C1);
+            for (int i = 0; i < 8; i++)
+            {
+                channel32s[i] = new WaveChannel32(readers[i]);
+                _mixer.AddInputStream(channel32s[i]);
+            }
             _camera.NewFrame += InstrumentHandler;
             _camera.Start();
             SetText("Please hold the pointer in marked area and press the button to the right", textBox2);
@@ -232,7 +257,10 @@ namespace CameraTestII
                 _camera.NewFrame -= CalibrationHandler;
                 _camera.NewFrame += NewFrameHandler;
             }
-
+            if (randGen.Next(0, 10) == 7)
+            {
+                channel32s[randGen.Next(0, 8)].Position = 0;
+            }
         }
         private void NewFrameHandler(object sender, NewFrameEventArgs e)
         {
@@ -356,4 +384,5 @@ namespace CameraTestII
         }
 
     }
+    
 }
