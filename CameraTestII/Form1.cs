@@ -257,10 +257,10 @@ namespace CameraTestII
                 _camera.NewFrame += NewFrameHandler;
             }
 
-            if (randGen.Next(0, 10) == 7)
+            /*if (randGen.Next(0, 10) == 7)
             {
                 channel32s[randGen.Next(0, 8)].Position = 0;
-            }
+            }*/
             
         }
         private void NewFrameHandler(object sender, NewFrameEventArgs e)
@@ -299,7 +299,11 @@ namespace CameraTestII
                 }
             }
             int x = MovementDetector(xCent, yCent, unmanaged2);
-            if (x>0) Console.WriteLine(x);
+            if (x >= 0)
+            {
+                Console.WriteLine(x);
+                channel32s[x].Position = 0;
+            }
             pictureBox2.Image = unmanaged2.ToManagedImage();
             pictureBox1.Image = frame;
         }
