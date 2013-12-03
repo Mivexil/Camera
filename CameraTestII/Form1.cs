@@ -141,7 +141,7 @@ namespace CameraTestII
             Color pixel = _blockMap.GetPixel(X, Y);
             position = pixel.R;
 
-            Console.WriteLine(position);
+            //Console.WriteLine(position);
             return position;
         }
 
@@ -297,13 +297,14 @@ namespace CameraTestII
                     }
                 }
             }
-            MovementDetector(xCent, yCent, unmanaged2);
+            Console.WriteLine(MovementDetector(xCent, yCent, unmanaged2));
             pictureBox2.Image = unmanaged2.ToManagedImage();
             pictureBox1.Image = frame;
         }
 
-        private void MovementDetector(int xCent, int yCent, UnmanagedImage unmanaged2)
+        private int MovementDetector(int xCent, int yCent, UnmanagedImage unmanaged2)
         {
+            bool _foundHitPoint = false;
             if (_lastPoints.Count >= 5)
             {
                 _lastPoints.Dequeue();
@@ -318,6 +319,7 @@ namespace CameraTestII
                         _lastPoints.ToArray()[2].Y - _lastPoints.ToArray()[4].Y > _epsilon)
                     {
                         _hitPoints.Add(_lastPoints.ToArray()[2]);
+                        _foundHitPoint = true;
                         _lastPoints.Clear();
                     }
                 }
@@ -336,6 +338,11 @@ namespace CameraTestII
                     }
                 }
             }
+            if (_foundHitPoint)
+            {
+                return checkPosition(_lastPoints.ToArray()[2].X, _lastPoints.ToArray()[2].Y);
+            }
+            else return -1;
         }
 
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
