@@ -9,7 +9,6 @@ using AForge.Imaging.Filters;
 using AForge.Video;
 using AForge.Video.DirectShow;
 using AForge.Math.Geometry;
-using NAudio.Mixer;
 using Point = System.Drawing.Point; //instead of AForge.Point
 using NAudio.Wave;
 
@@ -228,7 +227,6 @@ namespace CameraTestII
 
             }
             blocks.Sort((a, b) => (a[0].X.CompareTo(b[0].X)));
-
             InstrumentMap();
 
             pictureBox2.Image = _blockMap.ToManagedImage();
@@ -257,10 +255,12 @@ namespace CameraTestII
                 _camera.NewFrame -= CalibrationHandler;
                 _camera.NewFrame += NewFrameHandler;
             }
+
             if (randGen.Next(0, 10) == 7)
             {
                 channel32s[randGen.Next(0, 8)].Position = 0;
             }
+            
         }
         private void NewFrameHandler(object sender, NewFrameEventArgs e)
         {
@@ -341,7 +341,11 @@ namespace CameraTestII
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
         {
             _camera = null;
-            Environment.Exit(0);
+            try
+            {
+                Environment.Exit(0);
+            }
+            catch{}
         }
 
         private void button1_Click(object sender, EventArgs e)
