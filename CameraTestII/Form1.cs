@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -297,14 +298,15 @@ namespace CameraTestII
                     }
                 }
             }
-            Console.WriteLine(MovementDetector(xCent, yCent, unmanaged2));
+            int x = MovementDetector(xCent, yCent, unmanaged2);
+            if (x>0) Console.WriteLine(x);
             pictureBox2.Image = unmanaged2.ToManagedImage();
             pictureBox1.Image = frame;
         }
 
         private int MovementDetector(int xCent, int yCent, UnmanagedImage unmanaged2)
         {
-            bool _foundHitPoint = false;
+            bool foundHitPoint = false;
             if (_lastPoints.Count >= 5)
             {
                 _lastPoints.Dequeue();
@@ -319,7 +321,7 @@ namespace CameraTestII
                         _lastPoints.ToArray()[2].Y - _lastPoints.ToArray()[4].Y > _epsilon)
                     {
                         _hitPoints.Add(_lastPoints.ToArray()[2]);
-                        _foundHitPoint = true;
+                        foundHitPoint = true;
                         _lastPoints.Clear();
                     }
                 }
@@ -333,14 +335,14 @@ namespace CameraTestII
                         if (p.X + i >= 0 && p.X + i <= unmanaged2.Width && p.Y + i >= 0 && p.Y + i <= unmanaged2.Height)
                         {
                             unmanaged2.SetPixel(p.X + i, p.Y + j, 255);
-                            checkPosition(p.X, p.Y);
+                            //checkPosition(p.X, p.Y);
                         }
                     }
                 }
             }
-            if (_foundHitPoint)
+            if (foundHitPoint)
             {
-                return checkPosition(_lastPoints.ToArray()[2].X, _lastPoints.ToArray()[2].Y);
+                return checkPosition(_hitPoints.LastOrDefault().X, _hitPoints.LastOrDefault().Y);
             }
             else return -1;
         }
