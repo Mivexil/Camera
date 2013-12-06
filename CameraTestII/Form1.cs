@@ -29,16 +29,18 @@ namespace CameraTestII
         private readonly Erosion3x3 _filterErosion = new Erosion3x3();
         private bool _keypressed;
         private readonly BlobCounter _blob = new BlobCounter();
+        private int _tb1Value = 0;
         private int _filterHValue;
         private float _filterSValue, _filterLValue;
         private float _filterHPerc, _filterLPerc, _filterSPerc;
         private IntRange _filterHRange = new IntRange(0, 0);
         private Range _filterSRange = new Range(0, 0);
         private Range _filterLRange = new Range(0, 0);
-        private const double _epsilon = 20;
+        private const double _epsilon = 10;
         private List<Point> _hitPoints = new List<Point>();
         private Queue<Point> _lastPoints = new Queue<Point>();
         private Bitmap _lastFrame;
+        bool _isSet = false;
         private Random randGen = new Random();
         private List<List<IntPoint>> blocks = new List<List<IntPoint>>();
         private UnmanagedImage _blockMap;
@@ -182,7 +184,7 @@ namespace CameraTestII
 
                 PointedColorFloodFill filter = new PointedColorFloodFill();
                 filter.Tolerance = Color.FromArgb(150, 92, 92);
-                filter.FillColor = Color.FromArgb(blocks.IndexOf(block), blocks.IndexOf(block), blocks.IndexOf(block));
+                filter.FillColor = Color.FromArgb(blocks.IndexOf(block)+1, blocks.IndexOf(block)+1, blocks.IndexOf(block)+1);
                 filter.StartingPoint = midPoint;
                 filter.ApplyInPlace(_blockMap);
             }
@@ -190,49 +192,52 @@ namespace CameraTestII
 
         private void InstrumentHandler(object sender, NewFrameEventArgs e)
         {
-            Bitmap frame = new Bitmap(e.Frame);
-            UnmanagedImage unmanaged = UnmanagedImage.FromManagedImage(frame);
+             Bitmap frame = new Bitmap(e.Frame);
+                UnmanagedImage unmanaged = UnmanagedImage.FromManagedImage(frame);
 
-            UnmanagedImage unmanaged2 = _filterGrayscale.Apply(unmanaged);
-            _filterErosion.ApplyInPlace(unmanaged2);
-            _filterErosion.ApplyInPlace(unmanaged2);
+                UnmanagedImage unmanaged2 = _filterGrayscale.Apply(unmanaged);
+                _filterErosion.ApplyInPlace(unmanaged2);
+                _filterErosion.ApplyInPlace(unmanaged2);
 
-            Threshold filter = new Threshold(20);
-            filter.ApplyInPlace(unmanaged2);
+                Threshold filter = new Threshold(_tb1Value);
+                filter.ApplyInPlace(unmanaged2);
 
-            BlobCounter extractor = new BlobCounter();
-            extractor.MinWidth = extractor.MinHeight = unmanaged2.Height / 15;
-            extractor.MaxWidth = extractor.MaxHeight = unmanaged2.Height / 2;
-            extractor.FilterBlobs = true;
-            extractor.ProcessImage(unmanaged2);
-            _blockMap = unmanaged2;
-
-            foreach (Blob blob in extractor.GetObjectsInformation())
-            {
-                List<IntPoint> edgePoints = extractor.GetBlobsEdgePoints(blob);
-                if (edgePoints.Count > 4)
+                BlobCounter extractor = new BlobCounter();
+                extractor.MinWidth = extractor.MinHeight = unmanaged2.Height / 15;
+                extractor.MaxWidth = extractor.MaxHeight = unmanaged2.Height / 2;
+                extractor.FilterBlobs = true;
+                extractor.ProcessImage(unmanaged2);
+                _blockMap = unmanaged2;
+                blocks.Clear();
+                foreach (Blob blob in extractor.GetObjectsInformation())
                 {
-                    List<IntPoint> corners = PointsCloud.FindQuadrilateralCorners(edgePoints);
-                    /*foreach (IntPoint corner in corners)
+                    List<IntPoint> edgePoints = extractor.GetBlobsEdgePoints(blob);
+                    if (edgePoints.Count > 4)
                     {
-                        Drawing.Polygon(_blockMap, corners, Color.Red);
-                        for (int i = 0; i < corners.Count; i++)
+                        List<IntPoint> corners = PointsCloud.FindQuadrilateralCorners(edgePoints);
+                        foreach (IntPoint corner in corners)
                         {
-                            Drawing.FillRectangle(_blockMap,
-                                new Rectangle(corner.X - 2, corner.Y - 2, 5, 5),
-                                Color.FromArgb(i * 32 + 127 + 32, i * 64, i * 64));
+                            Drawing.Polygon(_blockMap, corners, Color.Red);
+                            for (int i = 0; i < corners.Count; i++)
+                            {
+                                Drawing.FillRectangle(_blockMap,
+                                    new Rectangle(corner.X - 2, corner.Y - 2, 5, 5),
+                                    Color.FromArgb(i * 32 + 127 + 32, i * 64, i * 64));
+                            }
                         }
-                    }*/
-                    blocks.Add(corners);
+                        blocks.Add(corners);
+                    }
+
                 }
+                blocks.Sort((a, b) => (a[0].X.CompareTo(b[0].X)));
+                InstrumentMap();
 
+                pictureBox2.Image = _blockMap.ToManagedImage(); 
+            if (_isSet)
+            {
+                _camera.NewFrame -= InstrumentHandler;
+                _camera.NewFrame += CalibrationHandler;
             }
-            blocks.Sort((a, b) => (a[0].X.CompareTo(b[0].X)));
-            InstrumentMap();
-
-            pictureBox2.Image = _blockMap.ToManagedImage();
-            _camera.NewFrame -= InstrumentHandler;
-            _camera.NewFrame += CalibrationHandler;
 
         }
 
@@ -299,10 +304,10 @@ namespace CameraTestII
                 }
             }
             int x = MovementDetector(xCent, yCent, unmanaged2);
-            if (x >= 0)
+            if (x > 0)
             {
                 Console.WriteLine(x);
-                channel32s[x].Position = 0;
+                channel32s[8 - x].Position = 0;
             }
             pictureBox2.Image = unmanaged2.ToManagedImage();
             pictureBox1.Image = frame;
@@ -346,7 +351,10 @@ namespace CameraTestII
             }
             if (foundHitPoint)
             {
-                return checkPosition(_hitPoints.LastOrDefault().X, _hitPoints.LastOrDefault().Y);
+                int x = checkPosition(_hitPoints.LastOrDefault().X, _hitPoints.LastOrDefault().Y);
+                if (x > 8 || x == 0) return -2;
+                //channel32s[8 - x].Position = 0;
+                return x;
             }
             else return -1;
         }
@@ -381,7 +389,7 @@ namespace CameraTestII
         }
         private void trackBarH_Scroll(object sender, EventArgs e)
         {
-            _filterHPerc = trackBarH.Value / 200.0f;
+            _filterHPerc = (trackBarH.Value / 200.0f);
             SetText((_filterHPerc * 100) + "%", textBoxHF);
             HSLChanged();
         }
@@ -398,6 +406,16 @@ namespace CameraTestII
             _filterLPerc = trackBarL.Value / 200.0f;
             SetText((_filterLPerc * 100) + "%", textBoxLF);
             HSLChanged();
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            _isSet = true;
+        }
+
+        private void trackBar1_Scroll(object sender, EventArgs e)
+        {
+            _tb1Value = trackBar1.Value;
         }
 
     }
