@@ -25,6 +25,7 @@ namespace CameraTestII
         private WaveChannel32[] channel32s = new WaveChannel32[8];
         private VideoCaptureDevice _camera;
         private HSLFiltering _filterHSL = new HSLFiltering();
+        private YCbCrFiltering _filterYCbCr = new YCbCrFiltering();
         private readonly Grayscale _filterGrayscale = Grayscale.CommonAlgorithms.BT709;
         private readonly Erosion3x3 _filterErosion = new Erosion3x3();
         private bool _keypressed;
@@ -33,6 +34,7 @@ namespace CameraTestII
         private int _filterHValue;
         private float _filterSValue, _filterLValue;
         private float _filterHPerc, _filterLPerc, _filterSPerc;
+        private float _CbMin, _CrMax;
         private IntRange _filterHRange = new IntRange(0, 0);
         private Range _filterSRange = new Range(0, 0);
         private Range _filterLRange = new Range(0, 0);
@@ -72,7 +74,7 @@ namespace CameraTestII
         private void Form1_Load(object sender, EventArgs e)
         {
             var videoDevices = new FilterInfoCollection(FilterCategory.VideoInputDevice);
-            _camera = new VideoCaptureDevice(videoDevices[0].MonikerString);
+            _camera = new VideoCaptureDevice(videoDevices[1].MonikerString);
             //_camera.NewFrame += CalibrationHandler;
             _mixer = new WaveMixerStream32();
             _mixer.AutoStop = false;
@@ -116,7 +118,8 @@ namespace CameraTestII
 
         private void SetupHSLFilter(Bitmap frame)
         {
-            UnmanagedImage unmanaged = UnmanagedImage.FromManagedImage(frame);
+            _filterYCbCr = new YCbCrFiltering(new Range(0, 1), new Range(0.7f, 1), new Range(0, 0.3f));
+            /*UnmanagedImage unmanaged = UnmanagedImage.FromManagedImage(frame);
             _filterHValue = 0;
             _filterSValue = 0;
             _filterLValue = 0;
@@ -133,7 +136,7 @@ namespace CameraTestII
             _filterHValue /= 25;
             _filterSValue /= 25;
             _filterLValue /= 25;
-            HSLChanged();
+            HSLChanged();*/
 
         }
 
@@ -272,15 +275,8 @@ namespace CameraTestII
         {
             Bitmap frame = new Bitmap(e.Frame);
             UnmanagedImage unmanaged = UnmanagedImage.FromManagedImage(frame);
-            Color c = Color.FromArgb(255, 255, 255);
-            for (int i = -2; i <= 2; i++)
-            {
-                for (int j = -2; j <= 2; j++)
-                {
-                    unmanaged.SetPixel(100 + i, 100 + j, c);
-                }
-            }
-            _filterHSL.ApplyInPlace(unmanaged);
+            Color c = Color.FromArgb(255, 255, 255);            
+            _filterYCbCr.ApplyInPlace(unmanaged);
             UnmanagedImage unmanaged2 = _filterGrayscale.Apply(unmanaged);
             _filterErosion.ApplyInPlace(unmanaged2);
             _filterErosion.ApplyInPlace(unmanaged2);
@@ -376,7 +372,7 @@ namespace CameraTestII
 
         private void HSLChanged()
         {
-            SetText(((_filterHValue - (_filterHPerc / 2) * _filterHValue).ToString()), textBoxR);
+            /*SetText(((_filterHValue - (_filterHPerc / 2) * _filterHValue).ToString()), textBoxR);
             SetText(((_filterHValue + (_filterHPerc / 2) * _filterHValue).ToString()), textBoxH);
             SetText((_filterSValue - (_filterSPerc / 2) * _filterSValue).ToString(), textBoxG);
             SetText((_filterSValue + (_filterSPerc / 2) * _filterSValue).ToString(), textBoxS);
@@ -385,27 +381,36 @@ namespace CameraTestII
             _filterHRange = new IntRange((int)(_filterHValue - (_filterHPerc / 2) * _filterHValue), (int)(_filterHValue + (_filterHPerc / 2) * _filterHValue));
             _filterSRange = new Range(_filterSValue - (_filterSPerc / 2) * _filterSValue, _filterSValue + (_filterSPerc / 2) * _filterSValue);
             _filterLRange = new Range(_filterLValue - (_filterLPerc / 2) * _filterLValue, _filterLValue + (_filterLPerc / 2) * _filterLValue);
-            _filterHSL = new HSLFiltering(_filterHRange, _filterSRange, _filterLRange);
+            _filterHSL = new HSLFiltering(_filterHRange, _filterSRange, _filterLRange);*/
+            Range cbRange = new Range(_CbMin - 0.5f, 0.5f);
+            Range crRange = new Range(-0.5f, _CrMax - 0.5f);
+            _filterYCbCr = new YCbCrFiltering(new Range(0, 1), cbRange, crRange);
         }
         private void trackBarH_Scroll(object sender, EventArgs e)
         {
-            _filterHPerc = (trackBarH.Value / 200.0f);
+            /*_filterHPerc = (trackBarH.Value / 200.0f);
             SetText((_filterHPerc * 100) + "%", textBoxHF);
+            HSLChanged();*/
+            _CbMin = (trackBarH.Value / 300.0f);
+            SetText(_CbMin.ToString(), textBoxHF);
             HSLChanged();
         }
 
         private void trackBarS_Scroll(object sender, EventArgs e)
         {
-            _filterSPerc = trackBarS.Value / 200.0f;
-            SetText((_filterSPerc * 100) + "%", textBoxSF);
+            _CrMax = (trackBarS.Value / 300.0f);
+            SetText(_CrMax.ToString(), textBoxSF);
             HSLChanged();
+            /*_filterSPerc = trackBarS.Value / 200.0f;
+            SetText((_filterSPerc * 100) + "%", textBoxSF);
+            HSLChanged();*/
         }
 
         private void trackBarL_Scroll(object sender, EventArgs e)
         {
-            _filterLPerc = trackBarL.Value / 200.0f;
+            /*_filterLPerc = trackBarL.Value / 200.0f;
             SetText((_filterLPerc * 100) + "%", textBoxLF);
-            HSLChanged();
+            HSLChanged();*/
         }
 
         private void button2_Click(object sender, EventArgs e)

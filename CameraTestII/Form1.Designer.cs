@@ -77,6 +77,7 @@
             this.trackBarH.Name = "trackBarH";
             this.trackBarH.Size = new System.Drawing.Size(633, 45);
             this.trackBarH.TabIndex = 1;
+            this.trackBarH.Value = 300;
             this.trackBarH.Scroll += new System.EventHandler(this.trackBarH_Scroll);
             // 
             // textBoxHF
@@ -203,7 +204,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1284, 758);
+            this.ClientSize = new System.Drawing.Size(1478, 758);
             this.Controls.Add(this.button2);
             this.Controls.Add(this.trackBar1);
             this.Controls.Add(this.trackBarL);
