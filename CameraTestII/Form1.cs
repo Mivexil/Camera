@@ -1,64 +1,76 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using AForge;
 using AForge.Imaging;
 using AForge.Imaging.Filters;
+using AForge.Math.Geometry;
 using AForge.Video;
 using AForge.Video.DirectShow;
-using AForge.Math.Geometry;
-using Point = System.Drawing.Point; //instead of AForge.Point
 using NAudio.Wave;
+using Point = System.Drawing.Point; //instead of AForge.Point
 
 namespace CameraTestII
 {
-
     public partial class Form1 : Form
     {
-        private IWavePlayer _waveOutDevice;
-        private WaveMixerStream32 _mixer;
-        private WaveFileReader[] readers = new WaveFileReader[8];
-        //private WaveOffsetStream[] offsetStreams = new WaveOffsetStream[8];
-        private WaveChannel32[] channel32s = new WaveChannel32[8];
-        private VideoCaptureDevice _camera;
-        private HSLFiltering _filterHSL = new HSLFiltering();
-        private YCbCrFiltering _filterYCbCr = new YCbCrFiltering();
-        private readonly Grayscale _filterGrayscale = Grayscale.CommonAlgorithms.BT709;
-        private readonly Erosion3x3 _filterErosion = new Erosion3x3();
-        private bool _keypressed;
-        private readonly BlobCounter _blob = new BlobCounter();
-        private int _tb1Value = 0;
-        private int _filterHValue;
-        private float _filterSValue, _filterLValue;
-        private float _filterHPerc, _filterLPerc, _filterSPerc;
-        private float _CbMin, _CrMax;
-        private IntRange _filterHRange = new IntRange(0, 0);
-        private Range _filterSRange = new Range(0, 0);
-        private Range _filterLRange = new Range(0, 0);
-        private const double _epsilon = 10;
-        private List<Point> _hitPoints = new List<Point>();
-        private Queue<Point> _lastPoints = new Queue<Point>();
-        private Bitmap _lastFrame;
-        bool _isSet = false;
-        private Random randGen = new Random();
-        private List<List<IntPoint>> blocks = new List<List<IntPoint>>();
-        private UnmanagedImage _blockMap;
+        private const double epsilon = 10; //Specifies the minimum movement along Y axis to be registered.
+        private readonly BlobCounter _pointerBlobCounter = new BlobCounter(); //Pointer detector.
+        private readonly BlobCounter _rectangleBlobCounter = new BlobCounter //Hit rectangle detector.
+        {
+            FilterBlobs = true,
+            MinWidth = 40,
+            MinHeight = 40,
+            MaxWidth = 320,
+            MaxHeight = 320
+        };
+        private readonly Erosion3x3 _filterErosion = new Erosion3x3(); //For eliminating noise.
+        private readonly Grayscale _filterGrayscale = Grayscale.CommonAlgorithms.BT709; //Standard grayscale filter.
+        private readonly Threshold _filterThreshold = new Threshold(0);
+        private readonly YCbCrFiltering _filterYCbCr = new YCbCrFiltering(
+            new Range(0, 1), 
+            new Range(0.5f, 0.5f), 
+            new Range(-0.5f, -0.5f)); //Filters out everything except the pointer.
 
-        /*Because we can't access controls from outside the UI thread normally*/
+        private readonly List<Point> _hitPoints = new List<Point>(); //List of coordinates of all "hits" (see MovementDetector).
+        private readonly Queue<Point> _lastPoints = new Queue<Point>(); //Stores up to 5 last pointer positions since last hit.
+        
+        //NAudio stuff
+        private IWavePlayer _waveOutDevice; //Our general sound output device
+        private readonly WaveChannel32[] _noteChannels = new WaveChannel32[8]; //Each note gets its own wave channel to enable polyphony.
+        private readonly WaveFileReader[] _readers = new WaveFileReader[8]; //For reading the resource .wav files.
+        private WaveMixerStream32 _mixer; //Mixes all notes together :)
+
+        private UnmanagedImage _blockMap; //Contains information about location of hit rectangles.
+        private VideoCaptureDevice _camera; //Our general video input device.
+       
+        private bool _rectangleFilterSet; //Allows the InstrumentHandler to unregister itself after clicking the "Set" button.
+
+        //Only a form constructor, nothing to see here
+        public Form1()
+        {
+            InitializeComponent();
+        }
+
+        //We can't normally set TextBox values outside of the UI thread, so we need this function.
         public void SetText(string text, TextBox box)
         {
             if (box.InvokeRequired)
             {
                 try
                 {
-                    Invoke(new Action<string, TextBox>(SetText), new object[] { text, box });
+                    Invoke(new Action<string, TextBox>(SetText), new object[] {text, box});
                 }
                 catch (ObjectDisposedException)
                 {
                     //Basically it means we're closing the application, so who cares.
+                }
+                catch (Exception e)
+                {
+                    Debug.Print("Exception while setting text: " + e.Message);
                 }
             }
             else
@@ -66,363 +78,260 @@ namespace CameraTestII
                 box.Text = text;
             }
         }
-        public Form1()
-        {
-            InitializeComponent();
-        }
 
+        //Initializes camera and wave output
         private void Form1_Load(object sender, EventArgs e)
         {
-            var videoDevices = new FilterInfoCollection(FilterCategory.VideoInputDevice);
-            _camera = new VideoCaptureDevice(videoDevices[1].MonikerString);
-            //_camera.NewFrame += CalibrationHandler;
-            _mixer = new WaveMixerStream32();
-            _mixer.AutoStop = false;
-            _waveOutDevice = new DirectSoundOut();
-            _waveOutDevice.Init(_mixer);
-            _waveOutDevice.Play();
-            readers[0] = new WaveFileReader(Resource1.C);
-            readers[1] = new WaveFileReader(Resource1.D);
-            readers[2] = new WaveFileReader(Resource1.E);
-            readers[3] = new WaveFileReader(Resource1.F);
-            readers[4] = new WaveFileReader(Resource1.G); 
-            readers[5] = new WaveFileReader(Resource1.A);
-            readers[6] = new WaveFileReader(Resource1.B);
-            readers[7] = new WaveFileReader(Resource1.C1);
+            //TODO: add nicer error handling when no video devices are present or audio initialization fails
+            var videoDevices = new FilterInfoCollection(FilterCategory.VideoInputDevice); //Obtain all video input devices.
+            //TODO: default to first camera, allow choice of camera when more than one present
+            _camera = new VideoCaptureDevice(videoDevices[1].MonikerString); //Initialize camera. For use with our external webcam. For regular use, change to [0].
+            _mixer = new WaveMixerStream32 {AutoStop = false}; //We want to keep the mixer working even when not currently playing anything.
+            _waveOutDevice = new DirectSoundOut(); //Initialize sound output.
+            _waveOutDevice.Init(_mixer); //Attach mixer to sound output.
+            _waveOutDevice.Play(); //Get ready for playing the wave files.
+            //Read all note resource files.
+            _readers[0] = new WaveFileReader(Resource1.C);
+            _readers[1] = new WaveFileReader(Resource1.D);
+            _readers[2] = new WaveFileReader(Resource1.E);
+            _readers[3] = new WaveFileReader(Resource1.F);
+            _readers[4] = new WaveFileReader(Resource1.G);
+            _readers[5] = new WaveFileReader(Resource1.A);
+            _readers[6] = new WaveFileReader(Resource1.B);
+            _readers[7] = new WaveFileReader(Resource1.C1);
             for (int i = 0; i < 8; i++)
             {
-                channel32s[i] = new WaveChannel32(readers[i]);
-                _mixer.AddInputStream(channel32s[i]);
+                _noteChannels[i] = new WaveChannel32(_readers[i]); //Convert each file into a wave channel.
+                _noteChannels[i].Position = _noteChannels[i].Length; //Set current position to the end, so that the sounds don't initially play
+                _mixer.AddInputStream(_noteChannels[i]); //Add each note to mixer.
             }
-            _camera.NewFrame += InstrumentHandler;
-            _camera.Start();
-            SetText("Please hold the pointer in marked area and press the button to the right", textBox2);
+            _camera.NewFrame += InstrumentHandler; //Register the first (calibration) handler.
+            _camera.Start(); //And off we go! :)
         }
 
+        //Given previous pointer positions, calculates whether the movement was upwards or downwards.
         private static bool[] SetDirections(Queue<Point> q)
         {
-            bool[] ret = new bool[4];
+            var ret = new bool[4];
             for (int i = 1; i < 5; i++)
             {
                 if (q.ToArray()[i].Y >= q.ToArray()[i - 1].Y)
                 {
-                    ret[i - 1] = true;
+                    ret[i - 1] = true; //Pointer moved down.
                 }
                 else
                 {
-                    ret[i - 1] = false;
+                    ret[i - 1] = false; //Pointer moved up.
                 }
             }
             return ret;
         }
 
-        private void SetupHSLFilter(Bitmap frame)
+        //Tests in which rectangle lies the given point.
+        //Return values 1-8 indicate which rectangle was hit. Values outside of that range indicate no rectangle was hit.
+        private int CheckPosition(int x, int y)
         {
-            _filterYCbCr = new YCbCrFiltering(new Range(0, 1), new Range(0.7f, 1), new Range(0, 0.3f));
-            /*UnmanagedImage unmanaged = UnmanagedImage.FromManagedImage(frame);
-            _filterHValue = 0;
-            _filterSValue = 0;
-            _filterLValue = 0;
-            for (int i = -2; i <= 2; i++)
-            {
-                for (int j = -2; j <= 2; j++)
-                {
-                    HSL hsl = HSL.FromRGB(new RGB(unmanaged.GetPixel(100 + i, 100 + j)));
-                    _filterHValue += hsl.Hue;
-                    _filterSValue += hsl.Saturation;
-                    _filterLValue += hsl.Luminance;
-                }
-            }
-            _filterHValue /= 25;
-            _filterSValue /= 25;
-            _filterLValue /= 25;
-            HSLChanged();*/
-
+            return _blockMap.GetPixel(x, y).R;
         }
 
-        private int checkPosition(int X, int Y)
+        //Initializes the map of hit rectangles locations.
+        //TODO: remove all pixels which don't belong to hit rectangles (currently the _blockMap contains the thresholded image).
+        private void InstrumentMap(List<List<IntPoint>> blocks)
         {
-            int position = -1;
-
-            Color pixel = _blockMap.GetPixel(X, Y);
-            position = pixel.R;
-
-            //Console.WriteLine(position);
-            return position;
-        }
-
-        private void InstrumentMap()
-        {
-            int minX = 0, minY = 0, maxX = 0, maxY = 0;
-            foreach (List<IntPoint> block in blocks)
+            foreach (var block in blocks) //For each quadrilateral (found in InstrumentHandler):
             {
-                minX = block[0].X;
-                maxX = block[0].X;
-                minY = block[0].Y;
-                maxY = block[0].Y;
-
-                foreach (IntPoint corner in block)
+                //Find the bounding rectangle of a given quadrilateral.
+                int minX = block.Min(c => c.X);
+                int maxX = block.Max(c => c.X);
+                int minY = block.Min(c => c.Y);
+                int maxY = block.Max(c => c.Y);
+                //Find the center of bounding rectangle (with some assumptions, it should lie within the quadrilateral).
+                var midPoint = new IntPoint((minX + maxX)/2, (minY + maxY)/2);
+                //Fill the quadrilateral with a shade of grey according to its number, starting in the center.
+                var filter = new PointedColorFloodFill
                 {
-                    if (corner.X < minX)
-                    {
-                        minX = corner.X;
-                    }
-                    if (corner.X > maxX)
-                    {
-                        maxX = corner.X;
-                    }
-                    if (corner.Y < minY)
-                    {
-                        minY = corner.Y;
-                    }
-                    if (corner.Y > maxY)
-                    {
-                        maxY = corner.Y;
-                    }
-                }
-
-                IntPoint midPoint;
-                midPoint.X = (minX + maxX) / 2;
-                midPoint.Y = (minY + maxY) / 2;
-
-                PointedColorFloodFill filter = new PointedColorFloodFill();
-                filter.Tolerance = Color.FromArgb(150, 92, 92);
-                filter.FillColor = Color.FromArgb(blocks.IndexOf(block)+1, blocks.IndexOf(block)+1, blocks.IndexOf(block)+1);
-                filter.StartingPoint = midPoint;
+                    Tolerance = Color.FromArgb(150, 92, 92), //TODO: not sure where this comes from (is that even necessary on a thresholded image?)
+                    FillColor =
+                        Color.FromArgb(blocks.IndexOf(block) + 1, blocks.IndexOf(block) + 1,
+                            blocks.IndexOf(block) + 1),
+                    StartingPoint = midPoint
+                };
                 filter.ApplyInPlace(_blockMap);
             }
         }
 
+        //Handles frames while finding the hit rectangles.
+        //TODO: A little refactoring into separate functions
         private void InstrumentHandler(object sender, NewFrameEventArgs e)
         {
-             Bitmap frame = new Bitmap(e.Frame);
-                UnmanagedImage unmanaged = UnmanagedImage.FromManagedImage(frame);
-
-                UnmanagedImage unmanaged2 = _filterGrayscale.Apply(unmanaged);
-                _filterErosion.ApplyInPlace(unmanaged2);
-                _filterErosion.ApplyInPlace(unmanaged2);
-
-                Threshold filter = new Threshold(_tb1Value);
-                filter.ApplyInPlace(unmanaged2);
-
-                BlobCounter extractor = new BlobCounter();
-                extractor.MinWidth = extractor.MinHeight = unmanaged2.Height / 15;
-                extractor.MaxWidth = extractor.MaxHeight = unmanaged2.Height / 2;
-                extractor.FilterBlobs = true;
-                extractor.ProcessImage(unmanaged2);
-                _blockMap = unmanaged2;
-                blocks.Clear();
-                foreach (Blob blob in extractor.GetObjectsInformation())
+            var frame = new Bitmap(e.Frame); //The framework can dispose of its own copy, so we need to create a local one.
+            UnmanagedImage grayscaledImage = _filterGrayscale.Apply(UnmanagedImage.FromManagedImage(frame)); //Convert to grayscale unmanaged image.
+            _filterErosion.ApplyInPlace(grayscaledImage); //Remove noise.
+            _filterErosion.ApplyInPlace(grayscaledImage);
+            //TODO: use BlobCounter thresholding instead
+            _filterThreshold.ApplyInPlace(grayscaledImage); //Apply thresholding to separate the white rectangles.
+            _rectangleBlobCounter.ProcessImage(grayscaledImage); //Find the rectangles on the image.
+            _blockMap = grayscaledImage; //Start with _blockMap as our thresholded image.
+            List<List<IntPoint>> blocks = new List<List<IntPoint>>(); //List of lists of corner points of each rectangle.
+            foreach (Blob blob in _rectangleBlobCounter.GetObjectsInformation()) //For each rectangle:
+            {
+                List<IntPoint> edgePoints = _rectangleBlobCounter.GetBlobsEdgePoints(blob); //Obtain a list of this rectangle's edge points.
+                if (edgePoints.Count > 4) //TODO: possibly redundant due to minWidth/minHeight of blobs
                 {
-                    List<IntPoint> edgePoints = extractor.GetBlobsEdgePoints(blob);
-                    if (edgePoints.Count > 4)
+                    List<IntPoint> corners = PointsCloud.FindQuadrilateralCorners(edgePoints); //Find corners of the rectangle.
+                    Drawing.Polygon(_blockMap, corners, Color.Red); //Draw the rectangle. TODO: Change red to something making more sense on a grayscale image
+                    foreach (IntPoint corner in corners)
                     {
-                        List<IntPoint> corners = PointsCloud.FindQuadrilateralCorners(edgePoints);
-                        foreach (IntPoint corner in corners)
+                        for (int i = 0; i < corners.Count; i++)
                         {
-                            Drawing.Polygon(_blockMap, corners, Color.Red);
-                            for (int i = 0; i < corners.Count; i++)
-                            {
-                                Drawing.FillRectangle(_blockMap,
-                                    new Rectangle(corner.X - 2, corner.Y - 2, 5, 5),
-                                    Color.FromArgb(i * 32 + 127 + 32, i * 64, i * 64));
-                            }
+                            //Draw corners of the rectangle as 5x5 points. 
+                            Drawing.FillRectangle(_blockMap,
+                                new Rectangle(corner.X - 2, corner.Y - 2, 5, 5),
+                                Color.FromArgb(i*32 + 127 + 32, i*64, i*64)); //TODO: That's weird.
                         }
-                        blocks.Add(corners);
                     }
-
+                    blocks.Add(corners); //Add the rectangle's corners to the list.
                 }
-                blocks.Sort((a, b) => (a[0].X.CompareTo(b[0].X)));
-                InstrumentMap();
-
-                pictureBox2.Image = _blockMap.ToManagedImage(); 
-            if (_isSet)
+            }
+            blocks.Sort((a, b) => (a[0].X.CompareTo(b[0].X))); //Sort rectangles left to right based on upper left corner coordinates.
+            InstrumentMap(blocks); //Prepare the _blockMap.
+            FilteredPictureBox.Image = _blockMap.ToManagedImage(); //Show the filtered picture in the right window.
+            OriginalPictureBox.Image = frame; //Show original picture in the left window.
+            if (_rectangleFilterSet) //If user clicked the "set" button:
             {
+                //Change the visible set of tuning bars to prepare for YCbCr filter tuning.
+                RectangleFilterTextBox.Visible = false;
+                RectangleFilterSetButton.Visible = false;
+                RectangleFilterBar.Visible = false;
+                RectangleFilterLabel.Visible = false;
+                MinCbBar.Visible = true;
+                MinCbTextBox.Visible = true;
+                MinCbLabel.Visible = true;
+                MaxCrBar.Visible = true;
+                MaxCrTextBox.Visible = true;
+                MaxCrLabel.Visible = true;
+                //Unregister this handler and register the standard handler.
                 _camera.NewFrame -= InstrumentHandler;
-                _camera.NewFrame += CalibrationHandler;
-            }
-
-        }
-
-        private void CalibrationHandler(object sender, NewFrameEventArgs e)
-        {
-            _lastFrame = e.Frame;
-            UnmanagedImage frame = UnmanagedImage.FromManagedImage(e.Frame);
-            Color c = Color.FromArgb(255, 0, 0);
-            for (int i = -2; i <= 2; i++)
-            {
-                for (int j = -2; j <= 2; j++)
-                {
-                    frame.SetPixel(100 + i, 100 + j, c);
-                }
-            }
-            pictureBox1.Image = frame.ToManagedImage();
-            if (_keypressed)
-            {
-                SetupHSLFilter(_lastFrame);
-                SetText("", textBox2);
-                _camera.NewFrame -= CalibrationHandler;
                 _camera.NewFrame += NewFrameHandler;
             }
-
-            /*if (randGen.Next(0, 10) == 7)
-            {
-                channel32s[randGen.Next(0, 8)].Position = 0;
-            }*/
-            
         }
+
+        //Standard new frame handler.
         private void NewFrameHandler(object sender, NewFrameEventArgs e)
         {
-            Bitmap frame = new Bitmap(e.Frame);
-            UnmanagedImage unmanaged = UnmanagedImage.FromManagedImage(frame);
-            Color c = Color.FromArgb(255, 255, 255);            
-            _filterYCbCr.ApplyInPlace(unmanaged);
-            UnmanagedImage unmanaged2 = _filterGrayscale.Apply(unmanaged);
+            var frame = new Bitmap(e.Frame); //The framework can dispose of its own copy, so we need to create a local one.
+            UnmanagedImage unmanaged = UnmanagedImage.FromManagedImage(frame); //Convert the bitmap to unmanaged one for faster processing.
+            _filterYCbCr.ApplyInPlace(unmanaged); //Apply YCbCr filtering to separate the pointer.
+            UnmanagedImage unmanaged2 = _filterGrayscale.Apply(unmanaged); //Convert the image to grayscale.
             _filterErosion.ApplyInPlace(unmanaged2);
-            _filterErosion.ApplyInPlace(unmanaged2);
-            _blob.ProcessImage(unmanaged2);
-            Rectangle[] rects = _blob.GetObjectsRectangles();
-            int xCent = -1, yCent = -1;
-            if (rects.Length != 0)
+            _filterErosion.ApplyInPlace(unmanaged2); //For noise removal.
+            _pointerBlobCounter.ProcessImage(unmanaged2); //Find all objects in the image.
+            Rectangle[] rects = _pointerBlobCounter.GetObjectsRectangles(); //Grab the objects' bounding rectangles.
+            int xCent = -1, yCent = -1; //Initialize coordinates of center of the biggest objects.
+            if (rects.Length != 0) //If we've found an object:
             {
-                Rectangle r = rects.Aggregate((r1, r2) => (r1.Height * r1.Width) > (r2.Height * r2.Width) ? r1 : r2);
-                xCent = r.Left + r.Width / 2;
-                yCent = r.Top + r.Height / 2;
+                Rectangle r = rects.Aggregate((r1, r2) => (r1.Height*r1.Width) > (r2.Height*r2.Width) ? r1 : r2); //Get the rectangle with biggest area.
+                //Set coordinates of center of the biggest object.
+                xCent = r.Left + r.Width/2; 
+                yCent = r.Top + r.Height/2;
             }
-            if (xCent >= 2 && yCent >= 2 && xCent <= unmanaged.Width - 2 && yCent <= unmanaged.Height - 2)
+            if (xCent >= 2 && yCent >= 2 && xCent <= unmanaged.Width - 2 && yCent <= unmanaged.Height - 2) //If the coordinates aren't too close to the edges:
             {
-                for (int i = -2; i <= 2; i++)
-                {
-                    for (int j = -2; j <= 2; j++)
-                    {
-                        unmanaged2.SetPixel(xCent + i, yCent + j, 255);
-                    }
-                }
+                Drawing.FillRectangle(unmanaged2,
+                    new Rectangle(xCent - 2, yCent - 2, 5, 5),
+                    Color.FromArgb(255, 255, 255)); //Draw the current pointer position.
             }
-            int x = MovementDetector(xCent, yCent, unmanaged2);
-            if (x > 0)
+            int x = MovementDetector(xCent, yCent, unmanaged2); //Check whether a hit occured, and if so, in which rectangle.
+            if (x > 0) //If a hit occured:
             {
-                Console.WriteLine(x);
-                channel32s[8 - x].Position = 0;
+                _noteChannels[8 - x].Position = 0; //Play the appropiate note.
             }
-            pictureBox2.Image = unmanaged2.ToManagedImage();
-            pictureBox1.Image = frame;
+            FilteredPictureBox.Image = unmanaged2.ToManagedImage(); //Show the filtered picture in the right window.
+            OriginalPictureBox.Image = frame; //Show the original picture in the left window.
         }
 
+        //Detects whether and where a hit occured.
         private int MovementDetector(int xCent, int yCent, UnmanagedImage unmanaged2)
         {
-            bool foundHitPoint = false;
-            if (_lastPoints.Count >= 5)
+            //TODO: make it so that the hit points history is being drawn even if we've lost the pointer
+            if (xCent == -1 || yCent == -1) return -3; //If we've lost the pointer, give up immediately and return a negative value.
+            bool foundHitPoint = false; //Indicates whether a new hitpoint was found.
+            if (_lastPoints.Count >= 5) //If there are already 5 points in the queue:
             {
-                _lastPoints.Dequeue();
+                _lastPoints.Dequeue(); //Remove the last one.
             }
-            _lastPoints.Enqueue(new Point(xCent, yCent));
-            if (_lastPoints.Count == 5)
+            _lastPoints.Enqueue(new Point(xCent, yCent)); //Add the current pointer position to the queue.
+            if (_lastPoints.Count == 5) //If there are 5 points:
             {
-                bool[] upDownBools = SetDirections(_lastPoints);
-                if (upDownBools[0] && upDownBools[1] && !upDownBools[2] && !upDownBools[3])
+                bool[] upDownBools = SetDirections(_lastPoints); //Check whether the pointer was moving up or down between every two successive frames.
+                if (upDownBools[0] && upDownBools[1] && !upDownBools[2] && !upDownBools[3]) //If the pattern is "down-down-up-up"...
                 {
-                    if (_lastPoints.ToArray()[2].Y - _lastPoints.ToArray()[0].Y > _epsilon &&
-                        _lastPoints.ToArray()[2].Y - _lastPoints.ToArray()[4].Y > _epsilon)
+                    if (_lastPoints.ToArray()[2].Y - _lastPoints.ToArray()[0].Y > epsilon &&
+                        _lastPoints.ToArray()[2].Y - _lastPoints.ToArray()[4].Y > epsilon) //...and if the position change was big enough (to eliminate spurious movement):
                     {
-                        _hitPoints.Add(_lastPoints.ToArray()[2]);
-                        foundHitPoint = true;
-                        _lastPoints.Clear();
+                        _hitPoints.Add(_lastPoints.ToArray()[2]); //Add the lowest position in the queue as the new hit point.
+                        foundHitPoint = true; //Indicate that a hitpoint was found.
+                        _lastPoints.Clear(); //Clear the queue.
                     }
                 }
             }
-            foreach (Point p in _hitPoints)
+            foreach (Point p in _hitPoints) //For each hitpoint in the history:
             {
-                for (int i = -2; i <= 2; i++)
+                if (p.X >= 2 && p.Y >= 2 && p.X <= unmanaged2.Width - 2 && p.Y <= unmanaged2.Height - 2) //If its coordinates aren't too close to the edges:
                 {
-                    for (int j = -2; j <= 2; j++)
-                    {
-                        if (p.X + i >= 0 && p.X + i <= unmanaged2.Width && p.Y + i >= 0 && p.Y + i <= unmanaged2.Height)
-                        {
-                            unmanaged2.SetPixel(p.X + i, p.Y + j, 255);
-                            //checkPosition(p.X, p.Y);
-                        }
-                    }
+                    Drawing.FillRectangle(unmanaged2,
+                        new Rectangle(p.X - 2, p.Y - 2, 5, 5),
+                        Color.FromArgb(255, 255, 255)); //Draw the point.
                 }
             }
-            if (foundHitPoint)
+            if (foundHitPoint) //If a hitpoint was found:
             {
-                int x = checkPosition(_hitPoints.LastOrDefault().X, _hitPoints.LastOrDefault().Y);
-                if (x > 8 || x == 0) return -2;
-                //channel32s[8 - x].Position = 0;
-                return x;
+                int x = CheckPosition(_hitPoints.LastOrDefault().X, _hitPoints.LastOrDefault().Y); //Test whether the hit occured in any of the rectangles.
+                if (x > 8 || x == 0) return -2; // If not, return a negative value.
+                return x; //If yes, return the number of that rectangle.
             }
-            else return -1;
+            return -1; //If no hitpoint was found, return a negative value.
         }
 
+        //Shuts down the whole program when the form is closed.
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
         {
-            _camera = null;
+            _camera = null; //TODO: probably unnecessary.
             try
             {
-                Environment.Exit(0);
+                Environment.Exit(0); //Break the execution, including non-UI threads.
             }
-            catch{}
+            catch (Exception x)
+            {
+                Debug.Print("Exception raised on exit: " + x.Message); //TODO: don't know why those exceptions happen, they don't do anything though.
+            }
+        }
+        
+        //Tuning bars and buttons event handlers.
+        private void RectangleFilterBar_Scroll(object sender, EventArgs e)
+        {
+            int rectangleFilterThreshold = RectangleFilterBar.Value;
+            SetText(rectangleFilterThreshold.ToString(), RectangleFilterTextBox);
+            _filterThreshold.ThresholdValue = rectangleFilterThreshold;
         }
 
-        private void button1_Click(object sender, EventArgs e)
+        private void RectangleFilterSetButton_Click(object sender, EventArgs e)
         {
-            _keypressed = true;
+            _rectangleFilterSet = true;
         }
 
-        private void HSLChanged()
+        private void MinCbBar_Scroll(object sender, EventArgs e)
         {
-            /*SetText(((_filterHValue - (_filterHPerc / 2) * _filterHValue).ToString()), textBoxR);
-            SetText(((_filterHValue + (_filterHPerc / 2) * _filterHValue).ToString()), textBoxH);
-            SetText((_filterSValue - (_filterSPerc / 2) * _filterSValue).ToString(), textBoxG);
-            SetText((_filterSValue + (_filterSPerc / 2) * _filterSValue).ToString(), textBoxS);
-            SetText((_filterLValue - (_filterLPerc / 2) * _filterLValue).ToString(), textBoxB);
-            SetText((_filterLValue + (_filterLPerc / 2) * _filterLValue).ToString(), textBoxL);
-            _filterHRange = new IntRange((int)(_filterHValue - (_filterHPerc / 2) * _filterHValue), (int)(_filterHValue + (_filterHPerc / 2) * _filterHValue));
-            _filterSRange = new Range(_filterSValue - (_filterSPerc / 2) * _filterSValue, _filterSValue + (_filterSPerc / 2) * _filterSValue);
-            _filterLRange = new Range(_filterLValue - (_filterLPerc / 2) * _filterLValue, _filterLValue + (_filterLPerc / 2) * _filterLValue);
-            _filterHSL = new HSLFiltering(_filterHRange, _filterSRange, _filterLRange);*/
-            Range cbRange = new Range(_CbMin - 0.5f, 0.5f);
-            Range crRange = new Range(-0.5f, _CrMax - 0.5f);
-            _filterYCbCr = new YCbCrFiltering(new Range(0, 1), cbRange, crRange);
-        }
-        private void trackBarH_Scroll(object sender, EventArgs e)
-        {
-            /*_filterHPerc = (trackBarH.Value / 200.0f);
-            SetText((_filterHPerc * 100) + "%", textBoxHF);
-            HSLChanged();*/
-            _CbMin = (trackBarH.Value / 300.0f);
-            SetText(_CbMin.ToString(), textBoxHF);
-            HSLChanged();
+            float cbMin = (MinCbBar.Value / 300.0f) - 0.5f; //Map (0,300) to (-0.5,0.5)
+            SetText(cbMin.ToString(), MinCbTextBox);
+            _filterYCbCr.Cb = new Range(cbMin, 0.5f);
         }
 
-        private void trackBarS_Scroll(object sender, EventArgs e)
+        private void MaxCrBar_Scroll(object sender, EventArgs e)
         {
-            _CrMax = (trackBarS.Value / 300.0f);
-            SetText(_CrMax.ToString(), textBoxSF);
-            HSLChanged();
-            /*_filterSPerc = trackBarS.Value / 200.0f;
-            SetText((_filterSPerc * 100) + "%", textBoxSF);
-            HSLChanged();*/
+            float crMax = (MaxCrBar.Value / 300.0f) - 0.5f; //Map (0,300) to (-0.5,0.5)
+            SetText(crMax.ToString(), MaxCrTextBox);
+            _filterYCbCr.Cr = new Range(-0.5f, crMax);
         }
-
-        private void trackBarL_Scroll(object sender, EventArgs e)
-        {
-            /*_filterLPerc = trackBarL.Value / 200.0f;
-            SetText((_filterLPerc * 100) + "%", textBoxLF);
-            HSLChanged();*/
-        }
-
-        private void button2_Click(object sender, EventArgs e)
-        {
-            _isSet = true;
-        }
-
-        private void trackBar1_Scroll(object sender, EventArgs e)
-        {
-            _tb1Value = trackBar1.Value;
-        }
-
     }
-    
 }

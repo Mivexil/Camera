@@ -28,211 +28,187 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.pictureBox1 = new System.Windows.Forms.PictureBox();
-            this.pictureBox2 = new System.Windows.Forms.PictureBox();
-            this.trackBarH = new System.Windows.Forms.TrackBar();
-            this.textBoxHF = new System.Windows.Forms.TextBox();
-            this.textBoxR = new System.Windows.Forms.TextBox();
-            this.textBoxG = new System.Windows.Forms.TextBox();
-            this.textBoxB = new System.Windows.Forms.TextBox();
-            this.textBoxH = new System.Windows.Forms.TextBox();
-            this.textBoxS = new System.Windows.Forms.TextBox();
-            this.textBoxL = new System.Windows.Forms.TextBox();
-            this.textBox2 = new System.Windows.Forms.TextBox();
-            this.button1 = new System.Windows.Forms.Button();
-            this.trackBarS = new System.Windows.Forms.TrackBar();
-            this.trackBarL = new System.Windows.Forms.TrackBar();
-            this.textBoxSF = new System.Windows.Forms.TextBox();
-            this.textBoxLF = new System.Windows.Forms.TextBox();
-            this.trackBar1 = new System.Windows.Forms.TrackBar();
-            this.button2 = new System.Windows.Forms.Button();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.trackBarH)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.trackBarS)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.trackBarL)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.trackBar1)).BeginInit();
+            this.OriginalPictureBox = new System.Windows.Forms.PictureBox();
+            this.FilteredPictureBox = new System.Windows.Forms.PictureBox();
+            this.MinCbBar = new System.Windows.Forms.TrackBar();
+            this.MinCbTextBox = new System.Windows.Forms.TextBox();
+            this.MaxCrBar = new System.Windows.Forms.TrackBar();
+            this.MaxCrTextBox = new System.Windows.Forms.TextBox();
+            this.RectangleFilterBar = new System.Windows.Forms.TrackBar();
+            this.RectangleFilterSetButton = new System.Windows.Forms.Button();
+            this.RectangleFilterTextBox = new System.Windows.Forms.TextBox();
+            this.OriginalImageLabel = new System.Windows.Forms.Label();
+            this.FilteredImageLabel = new System.Windows.Forms.Label();
+            this.RectangleFilterLabel = new System.Windows.Forms.Label();
+            this.MaxCrLabel = new System.Windows.Forms.Label();
+            this.MinCbLabel = new System.Windows.Forms.Label();
+            ((System.ComponentModel.ISupportInitialize)(this.OriginalPictureBox)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.FilteredPictureBox)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.MinCbBar)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.MaxCrBar)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.RectangleFilterBar)).BeginInit();
             this.SuspendLayout();
             // 
-            // pictureBox1
+            // OriginalPictureBox
             // 
-            this.pictureBox1.Location = new System.Drawing.Point(12, 50);
-            this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(719, 550);
-            this.pictureBox1.TabIndex = 0;
-            this.pictureBox1.TabStop = false;
+            this.OriginalPictureBox.Location = new System.Drawing.Point(11, 49);
+            this.OriginalPictureBox.Name = "OriginalPictureBox";
+            this.OriginalPictureBox.Size = new System.Drawing.Size(719, 550);
+            this.OriginalPictureBox.TabIndex = 0;
+            this.OriginalPictureBox.TabStop = false;
             // 
-            // pictureBox2
+            // FilteredPictureBox
             // 
-            this.pictureBox2.Location = new System.Drawing.Point(737, 50);
-            this.pictureBox2.Name = "pictureBox2";
-            this.pictureBox2.Size = new System.Drawing.Size(719, 550);
-            this.pictureBox2.TabIndex = 0;
-            this.pictureBox2.TabStop = false;
+            this.FilteredPictureBox.Location = new System.Drawing.Point(736, 50);
+            this.FilteredPictureBox.Name = "FilteredPictureBox";
+            this.FilteredPictureBox.Size = new System.Drawing.Size(719, 550);
+            this.FilteredPictureBox.TabIndex = 0;
+            this.FilteredPictureBox.TabStop = false;
             // 
-            // trackBarH
+            // MinCbBar
             // 
-            this.trackBarH.Location = new System.Drawing.Point(737, 627);
-            this.trackBarH.Maximum = 300;
-            this.trackBarH.Name = "trackBarH";
-            this.trackBarH.Size = new System.Drawing.Size(633, 45);
-            this.trackBarH.TabIndex = 1;
-            this.trackBarH.Value = 300;
-            this.trackBarH.Scroll += new System.EventHandler(this.trackBarH_Scroll);
+            this.MinCbBar.Location = new System.Drawing.Point(130, 604);
+            this.MinCbBar.Maximum = 300;
+            this.MinCbBar.Name = "MinCbBar";
+            this.MinCbBar.Size = new System.Drawing.Size(1242, 45);
+            this.MinCbBar.TabIndex = 1;
+            this.MinCbBar.Value = 300;
+            this.MinCbBar.Visible = false;
+            this.MinCbBar.Scroll += new System.EventHandler(this.MinCbBar_Scroll);
             // 
-            // textBoxHF
+            // MinCbTextBox
             // 
-            this.textBoxHF.Location = new System.Drawing.Point(1376, 627);
-            this.textBoxHF.Name = "textBoxHF";
-            this.textBoxHF.Size = new System.Drawing.Size(80, 20);
-            this.textBoxHF.TabIndex = 2;
-            this.textBoxHF.Text = "0%";
+            this.MinCbTextBox.Location = new System.Drawing.Point(1376, 616);
+            this.MinCbTextBox.Name = "MinCbTextBox";
+            this.MinCbTextBox.ReadOnly = true;
+            this.MinCbTextBox.Size = new System.Drawing.Size(80, 20);
+            this.MinCbTextBox.TabIndex = 2;
+            this.MinCbTextBox.Text = "0.5";
+            this.MinCbTextBox.Visible = false;
             // 
-            // textBoxR
+            // MaxCrBar
             // 
-            this.textBoxR.Location = new System.Drawing.Point(13, 626);
-            this.textBoxR.Name = "textBoxR";
-            this.textBoxR.Size = new System.Drawing.Size(100, 20);
-            this.textBoxR.TabIndex = 3;
+            this.MaxCrBar.Location = new System.Drawing.Point(128, 650);
+            this.MaxCrBar.Maximum = 300;
+            this.MaxCrBar.Name = "MaxCrBar";
+            this.MaxCrBar.Size = new System.Drawing.Size(1242, 45);
+            this.MaxCrBar.TabIndex = 6;
+            this.MaxCrBar.Visible = false;
+            this.MaxCrBar.Scroll += new System.EventHandler(this.MaxCrBar_Scroll);
             // 
-            // textBoxG
+            // MaxCrTextBox
             // 
-            this.textBoxG.Location = new System.Drawing.Point(119, 627);
-            this.textBoxG.Name = "textBoxG";
-            this.textBoxG.Size = new System.Drawing.Size(100, 20);
-            this.textBoxG.TabIndex = 3;
+            this.MaxCrTextBox.Location = new System.Drawing.Point(1376, 662);
+            this.MaxCrTextBox.Name = "MaxCrTextBox";
+            this.MaxCrTextBox.ReadOnly = true;
+            this.MaxCrTextBox.Size = new System.Drawing.Size(80, 20);
+            this.MaxCrTextBox.TabIndex = 2;
+            this.MaxCrTextBox.Text = "-0.5";
+            this.MaxCrTextBox.Visible = false;
             // 
-            // textBoxB
+            // RectangleFilterBar
             // 
-            this.textBoxB.Location = new System.Drawing.Point(225, 627);
-            this.textBoxB.Name = "textBoxB";
-            this.textBoxB.Size = new System.Drawing.Size(100, 20);
-            this.textBoxB.TabIndex = 3;
+            this.RectangleFilterBar.Location = new System.Drawing.Point(159, 621);
+            this.RectangleFilterBar.Maximum = 255;
+            this.RectangleFilterBar.Name = "RectangleFilterBar";
+            this.RectangleFilterBar.Size = new System.Drawing.Size(1092, 45);
+            this.RectangleFilterBar.TabIndex = 7;
+            this.RectangleFilterBar.Scroll += new System.EventHandler(this.RectangleFilterBar_Scroll);
             // 
-            // textBoxH
+            // RectangleFilterSetButton
             // 
-            this.textBoxH.Location = new System.Drawing.Point(12, 652);
-            this.textBoxH.Name = "textBoxH";
-            this.textBoxH.Size = new System.Drawing.Size(100, 20);
-            this.textBoxH.TabIndex = 3;
+            this.RectangleFilterSetButton.Location = new System.Drawing.Point(1363, 632);
+            this.RectangleFilterSetButton.Name = "RectangleFilterSetButton";
+            this.RectangleFilterSetButton.Size = new System.Drawing.Size(93, 23);
+            this.RectangleFilterSetButton.TabIndex = 8;
+            this.RectangleFilterSetButton.Text = "Set threshold";
+            this.RectangleFilterSetButton.UseVisualStyleBackColor = true;
+            this.RectangleFilterSetButton.Click += new System.EventHandler(this.RectangleFilterSetButton_Click);
             // 
-            // textBoxS
+            // RectangleFilterTextBox
             // 
-            this.textBoxS.Location = new System.Drawing.Point(118, 653);
-            this.textBoxS.Name = "textBoxS";
-            this.textBoxS.Size = new System.Drawing.Size(100, 20);
-            this.textBoxS.TabIndex = 3;
+            this.RectangleFilterTextBox.Location = new System.Drawing.Point(1257, 633);
+            this.RectangleFilterTextBox.Name = "RectangleFilterTextBox";
+            this.RectangleFilterTextBox.ReadOnly = true;
+            this.RectangleFilterTextBox.Size = new System.Drawing.Size(100, 20);
+            this.RectangleFilterTextBox.TabIndex = 9;
+            this.RectangleFilterTextBox.Text = "0";
             // 
-            // textBoxL
+            // OriginalImageLabel
             // 
-            this.textBoxL.Location = new System.Drawing.Point(225, 652);
-            this.textBoxL.Name = "textBoxL";
-            this.textBoxL.Size = new System.Drawing.Size(100, 20);
-            this.textBoxL.TabIndex = 3;
+            this.OriginalImageLabel.AutoSize = true;
+            this.OriginalImageLabel.Location = new System.Drawing.Point(302, 9);
+            this.OriginalImageLabel.Name = "OriginalImageLabel";
+            this.OriginalImageLabel.Size = new System.Drawing.Size(76, 13);
+            this.OriginalImageLabel.TabIndex = 10;
+            this.OriginalImageLabel.Text = "Original image:";
             // 
-            // textBox2
+            // FilteredImageLabel
             // 
-            this.textBox2.Location = new System.Drawing.Point(13, 13);
-            this.textBox2.Name = "textBox2";
-            this.textBox2.Size = new System.Drawing.Size(716, 20);
-            this.textBox2.TabIndex = 4;
+            this.FilteredImageLabel.AutoSize = true;
+            this.FilteredImageLabel.Location = new System.Drawing.Point(1076, 9);
+            this.FilteredImageLabel.Name = "FilteredImageLabel";
+            this.FilteredImageLabel.Size = new System.Drawing.Size(91, 13);
+            this.FilteredImageLabel.TabIndex = 10;
+            this.FilteredImageLabel.Text = "Processed image:";
             // 
-            // button1
+            // RectangleFilterLabel
             // 
-            this.button1.Location = new System.Drawing.Point(753, 13);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(75, 23);
-            this.button1.TabIndex = 5;
-            this.button1.Text = "button1";
-            this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.button1_Click);
+            this.RectangleFilterLabel.AutoSize = true;
+            this.RectangleFilterLabel.Location = new System.Drawing.Point(12, 636);
+            this.RectangleFilterLabel.Name = "RectangleFilterLabel";
+            this.RectangleFilterLabel.Size = new System.Drawing.Size(141, 13);
+            this.RectangleFilterLabel.TabIndex = 11;
+            this.RectangleFilterLabel.Text = "Rectangle filtering threshold:";
             // 
-            // trackBarS
+            // MaxCrLabel
             // 
-            this.trackBarS.Location = new System.Drawing.Point(737, 662);
-            this.trackBarS.Maximum = 300;
-            this.trackBarS.Name = "trackBarS";
-            this.trackBarS.Size = new System.Drawing.Size(633, 45);
-            this.trackBarS.TabIndex = 6;
-            this.trackBarS.Scroll += new System.EventHandler(this.trackBarS_Scroll);
+            this.MaxCrLabel.AutoSize = true;
+            this.MaxCrLabel.Location = new System.Drawing.Point(12, 666);
+            this.MaxCrLabel.Name = "MaxCrLabel";
+            this.MaxCrLabel.Size = new System.Drawing.Size(110, 13);
+            this.MaxCrLabel.TabIndex = 11;
+            this.MaxCrLabel.Text = "Maximum red chroma:";
+            this.MaxCrLabel.Visible = false;
             // 
-            // trackBarL
+            // MinCbLabel
             // 
-            this.trackBarL.Location = new System.Drawing.Point(737, 701);
-            this.trackBarL.Maximum = 300;
-            this.trackBarL.Name = "trackBarL";
-            this.trackBarL.Size = new System.Drawing.Size(633, 45);
-            this.trackBarL.TabIndex = 6;
-            this.trackBarL.Scroll += new System.EventHandler(this.trackBarL_Scroll);
-            // 
-            // textBoxSF
-            // 
-            this.textBoxSF.Location = new System.Drawing.Point(1376, 662);
-            this.textBoxSF.Name = "textBoxSF";
-            this.textBoxSF.Size = new System.Drawing.Size(80, 20);
-            this.textBoxSF.TabIndex = 2;
-            this.textBoxSF.Text = "0%";
-            // 
-            // textBoxLF
-            // 
-            this.textBoxLF.Location = new System.Drawing.Point(1376, 701);
-            this.textBoxLF.Name = "textBoxLF";
-            this.textBoxLF.Size = new System.Drawing.Size(80, 20);
-            this.textBoxLF.TabIndex = 2;
-            this.textBoxLF.Text = "0%";
-            // 
-            // trackBar1
-            // 
-            this.trackBar1.Location = new System.Drawing.Point(13, 692);
-            this.trackBar1.Maximum = 255;
-            this.trackBar1.Name = "trackBar1";
-            this.trackBar1.Size = new System.Drawing.Size(500, 45);
-            this.trackBar1.TabIndex = 7;
-            this.trackBar1.Scroll += new System.EventHandler(this.trackBar1_Scroll);
-            // 
-            // button2
-            // 
-            this.button2.Location = new System.Drawing.Point(549, 701);
-            this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(75, 23);
-            this.button2.TabIndex = 8;
-            this.button2.Text = "button2";
-            this.button2.UseVisualStyleBackColor = true;
-            this.button2.Click += new System.EventHandler(this.button2_Click);
+            this.MinCbLabel.AutoSize = true;
+            this.MinCbLabel.Location = new System.Drawing.Point(12, 620);
+            this.MinCbLabel.Name = "MinCbLabel";
+            this.MinCbLabel.Size = new System.Drawing.Size(112, 13);
+            this.MinCbLabel.TabIndex = 11;
+            this.MinCbLabel.Text = "Minimum blue chroma:";
+            this.MinCbLabel.Visible = false;
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1478, 758);
-            this.Controls.Add(this.button2);
-            this.Controls.Add(this.trackBar1);
-            this.Controls.Add(this.trackBarL);
-            this.Controls.Add(this.trackBarS);
-            this.Controls.Add(this.button1);
-            this.Controls.Add(this.textBox2);
-            this.Controls.Add(this.textBoxL);
-            this.Controls.Add(this.textBoxB);
-            this.Controls.Add(this.textBoxS);
-            this.Controls.Add(this.textBoxG);
-            this.Controls.Add(this.textBoxH);
-            this.Controls.Add(this.textBoxR);
-            this.Controls.Add(this.textBoxLF);
-            this.Controls.Add(this.textBoxSF);
-            this.Controls.Add(this.textBoxHF);
-            this.Controls.Add(this.trackBarH);
-            this.Controls.Add(this.pictureBox2);
-            this.Controls.Add(this.pictureBox1);
+            this.ClientSize = new System.Drawing.Size(1467, 701);
+            this.Controls.Add(this.RectangleFilterSetButton);
+            this.Controls.Add(this.RectangleFilterBar);
+            this.Controls.Add(this.MinCbLabel);
+            this.Controls.Add(this.MaxCrLabel);
+            this.Controls.Add(this.RectangleFilterLabel);
+            this.Controls.Add(this.MaxCrTextBox);
+            this.Controls.Add(this.MinCbTextBox);
+            this.Controls.Add(this.FilteredImageLabel);
+            this.Controls.Add(this.OriginalImageLabel);
+            this.Controls.Add(this.RectangleFilterTextBox);
+            this.Controls.Add(this.FilteredPictureBox);
+            this.Controls.Add(this.OriginalPictureBox);
+            this.Controls.Add(this.MinCbBar);
+            this.Controls.Add(this.MaxCrBar);
             this.Name = "Form1";
-            this.Text = "Form1";
+            this.Text = "PianoCam";
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.Form1_FormClosed);
             this.Shown += new System.EventHandler(this.Form1_Load);
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.trackBarH)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.trackBarS)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.trackBarL)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.trackBar1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.OriginalPictureBox)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.FilteredPictureBox)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.MinCbBar)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.MaxCrBar)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.RectangleFilterBar)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -240,24 +216,20 @@
 
         #endregion
 
-        private System.Windows.Forms.PictureBox pictureBox1;
-        private System.Windows.Forms.PictureBox pictureBox2;
-        private System.Windows.Forms.TrackBar trackBarH;
-        private System.Windows.Forms.TextBox textBoxHF;
-        private System.Windows.Forms.TextBox textBoxR;
-        private System.Windows.Forms.TextBox textBoxG;
-        private System.Windows.Forms.TextBox textBoxB;
-        private System.Windows.Forms.TextBox textBoxH;
-        private System.Windows.Forms.TextBox textBoxS;
-        private System.Windows.Forms.TextBox textBoxL;
-        private System.Windows.Forms.TextBox textBox2;
-        private System.Windows.Forms.Button button1;
-        private System.Windows.Forms.TrackBar trackBarS;
-        private System.Windows.Forms.TrackBar trackBarL;
-        private System.Windows.Forms.TextBox textBoxSF;
-        private System.Windows.Forms.TextBox textBoxLF;
-        private System.Windows.Forms.TrackBar trackBar1;
-        private System.Windows.Forms.Button button2;
+        private System.Windows.Forms.PictureBox OriginalPictureBox;
+        private System.Windows.Forms.PictureBox FilteredPictureBox;
+        private System.Windows.Forms.TrackBar MinCbBar;
+        private System.Windows.Forms.TextBox MinCbTextBox;
+        private System.Windows.Forms.TrackBar MaxCrBar;
+        private System.Windows.Forms.TextBox MaxCrTextBox;
+        private System.Windows.Forms.TrackBar RectangleFilterBar;
+        private System.Windows.Forms.Button RectangleFilterSetButton;
+        private System.Windows.Forms.TextBox RectangleFilterTextBox;
+        private System.Windows.Forms.Label OriginalImageLabel;
+        private System.Windows.Forms.Label FilteredImageLabel;
+        private System.Windows.Forms.Label RectangleFilterLabel;
+        private System.Windows.Forms.Label MaxCrLabel;
+        private System.Windows.Forms.Label MinCbLabel;
     }
 }
 
