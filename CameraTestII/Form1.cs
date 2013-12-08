@@ -78,6 +78,29 @@ namespace CameraTestII
                 box.Text = text;
             }
         }
+        //We can't also normally set control visibility outside of the UI thread too.
+        public void SetVisibility(bool isVisible, Control c)
+        {
+            if (c.InvokeRequired)
+            {
+                try
+                {
+                    Invoke(new Action<bool, Control>(SetVisibility), new object[] { isVisible, c });
+                }
+                catch (ObjectDisposedException)
+                {
+                    //Basically it means we're closing the application, so who cares.
+                }
+                catch (Exception e)
+                {
+                    Debug.Print("Exception while setting text: " + e.Message);
+                }
+            }
+            else
+            {
+                c.Visible = isVisible;
+            }
+        }
 
         //Initializes camera and wave output
         private void Form1_Load(object sender, EventArgs e)
@@ -85,7 +108,7 @@ namespace CameraTestII
             //TODO: add nicer error handling when no video devices are present or audio initialization fails
             var videoDevices = new FilterInfoCollection(FilterCategory.VideoInputDevice); //Obtain all video input devices.
             //TODO: default to first camera, allow choice of camera when more than one present
-            _camera = new VideoCaptureDevice(videoDevices[1].MonikerString); //Initialize camera. For use with our external webcam. For regular use, change to [0].
+             _camera = new VideoCaptureDevice(videoDevices[1].MonikerString); //Initialize camera. For use with our external webcam. For regular use, change to [0].
             _mixer = new WaveMixerStream32 {AutoStop = false}; //We want to keep the mixer working even when not currently playing anything.
             _waveOutDevice = new DirectSoundOut(); //Initialize sound output.
             _waveOutDevice.Init(_mixer); //Attach mixer to sound output.
@@ -200,16 +223,16 @@ namespace CameraTestII
             if (_rectangleFilterSet) //If user clicked the "set" button:
             {
                 //Change the visible set of tuning bars to prepare for YCbCr filter tuning.
-                RectangleFilterTextBox.Visible = false;
-                RectangleFilterSetButton.Visible = false;
-                RectangleFilterBar.Visible = false;
-                RectangleFilterLabel.Visible = false;
-                MinCbBar.Visible = true;
-                MinCbTextBox.Visible = true;
-                MinCbLabel.Visible = true;
-                MaxCrBar.Visible = true;
-                MaxCrTextBox.Visible = true;
-                MaxCrLabel.Visible = true;
+                SetVisibility(false, RectangleFilterTextBox);
+                SetVisibility(false, RectangleFilterSetButton);
+                SetVisibility(false, RectangleFilterBar);
+                SetVisibility(false, RectangleFilterLabel);
+                SetVisibility(true, MinCbBar);
+                SetVisibility(true, MinCbTextBox);
+                SetVisibility(true, MinCbLabel);
+                SetVisibility(true, MaxCrBar);
+                SetVisibility(true, MaxCrTextBox);
+                SetVisibility(true, MaxCrLabel);
                 //Unregister this handler and register the standard handler.
                 _camera.NewFrame -= InstrumentHandler;
                 _camera.NewFrame += NewFrameHandler;
